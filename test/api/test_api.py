@@ -32,7 +32,8 @@ class Test_Composer:
         assert Composer.pythonCast(None) == 'None'
 
     def test_composeWord(self, attribute_word):
-        assert Composer.composeWord(key=attribute_word.key, value=attribute_word.value) == attribute_word.raw
+        result = Composer.composeWord(key=attribute_word.key, value=attribute_word.value)
+        assert result == attribute_word.raw
 
 
 class Test_Api:

@@ -1,7 +1,6 @@
 """NAPALM driver for Mikrotik RouterBoard OS (ROS)"""
 
 from napalm_base.base import NetworkDriver
-from napalm_base.exceptions import ConnectionException, MergeConfigException, CommandErrorException
 
 
 class ROSDriver(NetworkDriver):

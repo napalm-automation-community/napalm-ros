@@ -12,7 +12,8 @@ def test_lib_default_arguments(lib_default_kwargs):
 
 
 def test_password_encoding():
-    assert encode_password('259e0bc05acd6f46926dc2f809ed1bba', 'test') == '00c7fd865183a43a772dde231f6d0bff13'
+    result = encode_password('259e0bc05acd6f46926dc2f809ed1bba', 'test')
+    assert result == '00c7fd865183a43a772dde231f6d0bff13'
 
 
 def test_non_ascii_password_encoding():

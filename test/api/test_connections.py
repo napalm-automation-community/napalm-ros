@@ -25,7 +25,8 @@ class Test_Decoder:
         assert str(bad_first_length_bytes) in str(error.value)
 
     def test_decodeLength(self, valid_word_length):
-        assert connections.Decoder.decodeLength(valid_word_length.encoded) == valid_word_length.integer
+        result = connections.Decoder.decodeLength(valid_word_length.encoded)
+        assert result == valid_word_length.integer
 
     def test_decodeLength_raises(self, bad_length_bytes):
         with pytest.raises(ConnectionError) as error:
@@ -47,7 +48,8 @@ class Test_Decoder:
 class Test_Encoder:
 
     def test_encodeLength(self, valid_word_length):
-        assert connections.Encoder.encodeLength(valid_word_length.integer) == valid_word_length.encoded
+        result = connections.Encoder.encodeLength(valid_word_length.integer)
+        assert result == valid_word_length.encoded
 
     def test_encodeLength_raises_if_lenghth_is_too_big(self, bad_length_int):
         with pytest.raises(ConnectionError) as error:
@@ -79,7 +81,9 @@ class Test_Encoder:
 class Test_ApiProtocol:
 
     def setup(self):
-        self.protocol = connections.ApiProtocol(transport=MagicMock(spec=connections.SocketTransport))
+        self.protocol = connections.ApiProtocol(
+                transport=MagicMock(spec=connections.SocketTransport)
+                )
 
     @patch.object(connections.Encoder, 'encodeSentence')
     def test_writeSentence_calls_encodeSentence(self, encodeSentence_mock):

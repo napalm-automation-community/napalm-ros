@@ -18,3 +18,4 @@ deploy:
 
 script:
 - pylama .
+- py.test

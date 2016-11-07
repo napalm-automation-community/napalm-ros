@@ -1,3 +1,2 @@
-napalm-base==0.17.1
-mikoshell
-paramiko
+napalm-base
+chainmap

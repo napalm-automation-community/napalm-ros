@@ -43,7 +43,7 @@ class ROSDriver(NetworkDriver):
             'vendor': resource['platform'],
             'model': resource['board-name'],
             'hostname': identity['name'],
-            'fqdn': u'',
+            'fqdn': ''.encode(),
             'os_version': resource['version'],
             'serial_number': routerboard.get('serial_number', ''),
             'interface_list': tuple(iface['name'] for iface in interfaces)

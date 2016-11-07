@@ -1,9 +1,4 @@
 future
-pytest==2.9.2
-pytest-cov
-pytest-json
-pytest-pythonpath
+pytest==2.*
 pylama
 flake8-import-order
-coveralls
--r requirements.txt

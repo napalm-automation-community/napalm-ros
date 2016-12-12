@@ -1,0 +1,1 @@
+{"fans": {}, "cpu": {"cpu0": {"%usage": 3.0}}, "temperature": {"board": {"is_alert": false, "temperature": 28.0, "is_critical": false}}, "power": {}, "memory": {"available_ram": 96, "used_ram": 24}}

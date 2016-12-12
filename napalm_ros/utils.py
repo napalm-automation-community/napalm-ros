@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import re
 
 
@@ -7,6 +8,7 @@ def export_concat(export_config):
 
     concat_config = []
     for line in export_config:
+        line = line.rstrip('\r\n')
         if line == '':
             continue
         if line[0] == '/':
@@ -15,7 +17,10 @@ def export_concat(export_config):
         elif line[0] == '#':
             continue
         elif line[-1:] == '\\':
-            line_buffer.append(line[:-1].lstrip())
+            line = line[:-1].lstrip()
+            if line[:2] == '\\_':
+                line = ' {}'.format(line[2:])
+            line_buffer.append(line)
         else:
             if export_section is None:
                 raise ValueError('No configuration section')
@@ -178,8 +183,12 @@ def print_to_values_structured(print_output):
         to_values_structured.append(key_value)
     return to_values_structured
 
+import napalm_base.utils.string_parsers
 
 def to_seconds(time_format):
+    return napalm_base.utils.string_parsers.convert_uptime_string_seconds(time_format)
+
+def Xto_seconds(time_format):
     seconds = minutes = hours = days = weeks = 0
 
     number_buffer = ''

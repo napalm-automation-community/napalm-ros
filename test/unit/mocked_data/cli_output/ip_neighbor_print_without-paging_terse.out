@@ -1,2 +1,0 @@
- 0 interface=ether1 address=192.168.145.1 address4=192.168.145.1 address6=2001:8b0:2222:c9fa::1 mac-address=AE:DE:48:00:00:01 identity=test-device.localnet platform=MikroTik version=6.35.4 (stable) unpack=none age=11s uptime=2w3d18h48m31s software-id=123H-FME8 board=RB2011UAS-2HnD ipv6=yes interface-name=bridge1 
-

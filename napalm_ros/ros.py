@@ -1,4 +1,6 @@
 """NAPALM driver for Mikrotik RouterBoard OS (ROS)"""
+from __future__ import unicode_literals
+
 import datetime
 import re
 import socket
@@ -8,12 +10,12 @@ except ImportError:
     from io import StringIO
 #
 from napalm_base.base import NetworkDriver
+import napalm_base.constants as c
 from napalm_base.exceptions import ConnectionException, MergeConfigException, CommandErrorException
 import napalm_base.utils.string_parsers
 import paramiko
 import mikoshell
-
-from . import utils as ros_utils
+import napalm_ros.utils as ros_utils
 
 
 class ROSDriver(NetworkDriver):
@@ -34,14 +36,17 @@ class ROSDriver(NetworkDriver):
         self.config_session = None
         self.merge_config = False
 
-    def cli(self, *commands):
+    def cli(self, commands):
+        if not isinstance(commands, list):
+            commands = [commands]
+
         cli_output = {}
         for command in commands:
             device_output = self.mikoshell.command(command)
             if len(device_output) == 1 and device_output[0] != '':
                 if ros_utils.is_cli_error(device_output[0]):
                     raise CommandErrorException(device_output[0])
-            cli_output[unicode(command)] = device_output
+            cli_output[command] = device_output
         return cli_output
 
     def close(self):
@@ -85,15 +90,13 @@ class ROSDriver(NetworkDriver):
                 continue
             arp_table.append(
                 {
-                    'interface': unicode(arp_entry.get('interface')),
+                    'interface': arp_entry.get('interface'),
                     'mac': napalm_base.helpers.mac(arp_entry.get('mac-address')),
                     'ip': napalm_base.helpers.ip(arp_entry.get('address')),
                     'age': float(-1),
                 }
             )
         return arp_table
-
-#   def get_bgp_config(self, group='', neighbor=''):
 
     def get_bgp_neighbors(self):
         bgp_neighbors = {
@@ -108,8 +111,8 @@ class ROSDriver(NetworkDriver):
         for routing_table, bgp_peers in ros_utils.index_values(
                 self._get_bgp_peers(),
                 'routing-table'
-        ).iteritems():
-            routing_table = unicode(routing_table)
+        ).items():
+            routing_table = routing_table
             bgp_neighbors[routing_table] = {
                 'router_id': u'',
                 'peers': {},
@@ -127,7 +130,7 @@ class ROSDriver(NetworkDriver):
                     ),
                     'is_up': bgp_peer['state'] == 'established',
                     'is_enabled': bgp_peer['flags'].find('X') == -1,
-                    'description': unicode(bgp_peer['name'].replace('"', '')),
+                    'description': bgp_peer['name'].replace('"', ''),
                     'uptime': ros_utils.to_seconds(bgp_peer.get('uptime', '')),
                     'address_family': {
                         'ipv4': {
@@ -146,7 +149,7 @@ class ROSDriver(NetworkDriver):
             if len(router_ids) != 1:
                 raise ValueError('Multiple router-id values seen')
             bgp_neighbors[routing_table]['router_id'] = \
-                napalm_base.helpers.ip(router_ids.keys()[0])
+                napalm_base.helpers.ip(list(router_ids.keys())[0])  # list for py23 compatibility
         return bgp_neighbors
 
     def get_bgp_neighbors_detail(self, neighbor_address=''):
@@ -159,10 +162,10 @@ class ROSDriver(NetworkDriver):
         for routing_table, peers in ros_utils.index_values(
                 self._get_bgp_peers(neighbor_ip=neighbor_address),
                 'routing-table'
-        ).iteritems():
-            routing_table = unicode(routing_table)
+        ).items():
+            routing_table = routing_table
             bgp_neighbors_detail[routing_table] = {}
-            for remote_as, bgp_peers in ros_utils.index_values(peers, 'remote-as').iteritems():
+            for remote_as, bgp_peers in ros_utils.index_values(peers, 'remote-as').items():
                 remote_as = int(remote_as)
                 if remote_as not in bgp_neighbors_detail[routing_table]:
                     bgp_neighbors_detail[routing_table][remote_as] = []
@@ -178,7 +181,7 @@ class ROSDriver(NetworkDriver):
                             'local_address': napalm_base.helpers.convert(
                                 napalm_base.helpers.ip, bgp_peer.get('local-address', '')
                             ),
-                            'routing_table': unicode(bgp_peer['routing-table']),
+                            'routing_table': bgp_peer['routing-table'],
                             'local_address_configured': False,
                             'local_port': -1,
                             'remote_address': napalm_base.helpers.ip(bgp_peer['remote-address']),
@@ -186,14 +189,14 @@ class ROSDriver(NetworkDriver):
                             'multihop': bgp_peer['multihop'] == 'yes',
                             'multipath': False,
                             'remove_private_as': bgp_peer['remove-private-as'] == 'yes',
-                            'import_policy': unicode(bgp_peer['in-filter'].replace('"', '')),
-                            'export_policy': unicode(bgp_peer['out-filter'].replace('"', '')),
+                            'import_policy': bgp_peer['in-filter'].replace('"', ''),
+                            'export_policy': bgp_peer['out-filter'].replace('"', ''),
                             'input_messages': -1,
                             'output_messages': -1,
                             'input_updates': int(bgp_peer.get('updates-received', -1)),
                             'output_updates': int(bgp_peer.get('updates-sent', -1)),
                             'messages_queued_out': -1,
-                            'connection_state': unicode(bgp_peer['state']),
+                            'connection_state': bgp_peer['state'],
                             'previous_connection_state': u'',
                             'last_event': u'',
                             'suppress_4byte_as': bgp_peer.get('as4-capability', '') == 'no',
@@ -285,12 +288,12 @@ class ROSDriver(NetworkDriver):
 
         return {
             'uptime': ros_utils.to_seconds(system_resource['uptime']),
-            'vendor': unicode(system_resource['platform']),
-            'model': unicode(system_resource['board-name']),
-            'hostname': unicode(system_identity['name']),
+            'vendor': system_resource['platform'],
+            'model': system_resource['board-name'],
+            'hostname': system_identity['name'],
             'fqdn': u'',
-            'os_version': unicode(system_resource['version']),
-            'serial_number': unicode(system_routerboard.get('serial-number', '')),
+            'os_version': system_resource['version'],
+            'serial_number': system_routerboard.get('serial_number', ''),
             'interface_list': napalm_base.utils.string_parsers.sorted_nicely(
                 [intf.get('name') for intf in self._api_get('/interface')]
             ),
@@ -321,7 +324,7 @@ class ROSDriver(NetworkDriver):
         for if_counters in ros_utils.print_to_values_structured(
                 ros_utils.print_concat(stats_detail)
         ):
-            if_name = unicode(if_counters['name'].replace('"', ''))
+            if_name = if_counters['name'].replace('"', '')
             if self._interface_type(if_name) != 'ether':
                 continue
             if if_name in if_counters:
@@ -362,8 +365,7 @@ class ROSDriver(NetworkDriver):
         for if_name, if_addresses in ros_utils.index_values(
                 self._api_get('/ip/address'),
                 'interface'
-        ).iteritems():
-            if_name = unicode(if_name)
+        ).items():
             if if_name not in interfaces_ip:
                 interfaces_ip[if_name] = {
                     'ipv4': {}
@@ -379,8 +381,7 @@ class ROSDriver(NetworkDriver):
         for if_name, if_addresses in ros_utils.index_values(
                 self._api_get('/ipv6/address'),
                 'interface'
-        ).iteritems():
-            if_name = unicode(if_name)
+        ).items():
             if if_name not in interfaces_ip:
                 interfaces_ip[if_name] = {
                     'ipv6': {}
@@ -399,10 +400,10 @@ class ROSDriver(NetworkDriver):
             raise NotImplementedError
         return self._get_mndp_neighbors()
 
-    def get_lldp_neighbors_detail(self, *args, **kwargs):
+    def get_lldp_neighbors_detail(self, interface=''):
         if not self._minimum_version(6, 38):
             raise NotImplementedError
-        return self._get_mndp_neighbors_detail(*args, **kwargs)
+        return self._get_mndp_neighbors_detail(interface)
 
 #   def get_mac_address_table(self):
 
@@ -412,7 +413,7 @@ class ROSDriver(NetworkDriver):
         ntp_servers = {}
         ntp_client_values = self._api_get('/system/ntp/client', structured=False)[0]
         for ntp_peer in ntp_client_values.get('server-dns-names', '').split(','):
-            ntp_servers[unicode(ntp_peer)] = {}
+            ntp_servers[ntp_peer] = {}
         return ntp_servers
 
 #   def get_ntp_stats(self):
@@ -458,7 +459,7 @@ class ROSDriver(NetworkDriver):
             protocol_attributes = {}
             communities = []
             for community in ipv4_route.get('bgp-communities', '').split(','):
-                communities.append(unicode(community))
+                communities.append(community)
 
             if route_type == 'BGP':
                 bgp_neighbor_details = self._get_bgp_peers(name=ipv4_route['received-from'])[0]
@@ -488,7 +489,7 @@ class ROSDriver(NetworkDriver):
 
             route_to[ipv4_route['dst-address']].append(
                 {
-                    'protocol': unicode(route_type),
+                    'protocol': route_type,
                     'current_active': ipv4_route['flags'].find('X') == -1,
                     'last_active': False,
                     'age': int(-1),
@@ -497,13 +498,12 @@ class ROSDriver(NetworkDriver):
                         ipv4_route.get('gateway', ''),
                         ipv4_route.get('gateway', '')
                     ),
-                    'outgoing_interface': unicode(
-                        ipv4_route.get('gateway-status', '').split()[-1]
-                    ),
+                    'outgoing_interface':
+                        ipv4_route.get('gateway-status', '').split()[-1],
                     'selected_next_hop': False,
                     'preference': int(0),
                     'inactive_reason': u'',
-                    'routing_table': unicode(ipv4_route.get('routing-mark', '')),
+                    'routing_table': ipv4_route.get('routing-mark', ''),
                     'protocol_attributes': protocol_attributes
                 }
             )
@@ -512,18 +512,18 @@ class ROSDriver(NetworkDriver):
     def get_snmp_information(self):
         snmp_communities = {}
         for snmp_community in self._api_get('/snmp/community'):
-            snmp_communities[unicode(snmp_community.get('name'))] = {
-                'acl': unicode(snmp_community.get('addresses', '')),
-                'mode': unicode('ro' if snmp_community.get('read-access', '') == 'yes' else 'rw'),
+            snmp_communities[snmp_community.get('name')] = {
+                'acl': u'{}'.format(snmp_community.get('addresses', u'')),
+                'mode': u'ro' if snmp_community.get('read-access', '') == 'yes' else u'rw',
             }
 
         snmp_values = self._api_get('/snmp', structured=False)[0]
 
         return {
-            'chassis_id': unicode(snmp_values['engine-id']),
+            'chassis_id': u'{}'.format(snmp_values['engine-id']),
             'community': snmp_communities,
-            'contact': unicode(snmp_values['contact']),
-            'location': unicode(snmp_values['location']),
+            'contact': u'{}'.format(snmp_values['contact']),
+            'location': u'{}'.format(snmp_values['location']),
         }
 
     def get_users(self):
@@ -595,7 +595,8 @@ class ROSDriver(NetworkDriver):
         self.ros_version = self._ros_version()
         self._datetime_offset = datetime.datetime.now() - self._ros_datetime()
 
-    def ping(self, destination, source='', ttl=0, timeout=0, size=0, count=5):
+    def ping(self, destination, source=c.PING_SOURCE, ttl=c.PING_TTL, timeout=c.PING_TIMEOUT,
+             size=c.PING_SIZE, count=c.PING_COUNT):
         ping_command = '/ping {} count={}'.format(destination, 10 if count > 10 else count)
         if source != '':
             ping_command += ' src-address={}'.format(source)
@@ -640,7 +641,8 @@ class ROSDriver(NetworkDriver):
 
 #   def rollback(self):
 
-    def traceroute(self, destination, source='', ttl=0, timeout=0):
+    def traceroute(self, destination, source=c.TRACEROUTE_SOURCE, ttl=c.TRACEROUTE_TTL,
+                   timeout=c.TRACEROUTE_TIMEOUT):
         num_probes = 3
         traceroute_command = '/tool traceroute address={} count={}'.format(
             destination,
@@ -716,7 +718,7 @@ class ROSDriver(NetworkDriver):
             api_output = [ros_utils.print_to_values(cli_output)]
         return api_output
 
-    def X_api_get(self, command, **kwargs):
+    def _X_api_get(self, command, **kwargs):
         if not hasattr(self, 'command_cache'):
             self.command_cache = {}
         use_cache = kwargs.pop('use_cache', False)
@@ -804,15 +806,14 @@ class ROSDriver(NetworkDriver):
         for if_name, if_neighbors in ros_utils.index_values(
                 self._api_get('/ip/neighbor'),
                 'interface'
-        ).iteritems():
-            if_name = unicode(if_name)
+        ).items():
             if if_name not in mndp_neighbors:
                 mndp_neighbors[if_name] = []
             for if_neighbor in if_neighbors:
                 mndp_neighbors[if_name].append(
                     {
-                        'hostname': unicode(if_neighbor['identity']),
-                        'port': unicode(if_neighbor['interface-name'])
+                        'hostname': if_neighbor['identity'],
+                        'port': if_neighbor['interface-name']
                     }
                 )
         return mndp_neighbors
@@ -826,8 +827,7 @@ class ROSDriver(NetworkDriver):
         for if_name, if_neighbors in ros_utils.index_values(
                 ros_utils.print_to_values_structured(self.cli(cli_command)[cli_command]),
                 'interface'
-        ).iteritems():
-            if_name = unicode(if_name)
+        ).items():
             if if_name not in mndp_neighbors_detail:
                 mndp_neighbors_detail[if_name] = []
             for if_neighbor in if_neighbors:
@@ -839,12 +839,11 @@ class ROSDriver(NetworkDriver):
                             if_neighbor['mac-address'],
                             if_neighbor['mac-address']
                         ),
-                        'remote_system_name': unicode(if_neighbor['identity']),
-                        'remote_port': unicode(if_neighbor['interface-name']),
+                        'remote_system_name': if_neighbor['identity'],
+                        'remote_port': if_neighbor['interface-name'],
                         'remote_port_description': u'',
-                        'remote_system_description': unicode(
-                            '{} {}'.format(if_neighbor['platform'], if_neighbor.get('board', ''))
-                        ),
+                        'remote_system_description':
+                            '{} {}'.format(if_neighbor['platform'], if_neighbor.get('board', '')),
                         'remote_system_capab': u'',
                         'remote_system_enable_capab': u''
                     }

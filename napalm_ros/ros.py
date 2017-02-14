@@ -24,6 +24,17 @@ from napalm_ros.utils import (
         iface_addresses,
         )
 
+import json
+from collections import namedtuple
+
+try:
+    from itertools import izip_longest as zipper
+except ImportError:
+    from itertools import zip_longest as zipper
+
+
+opcmd = namedtuple('opcmd', ('cmd', 'args'))
+
 
 class ROSDriver(NetworkDriver):
     def __init__(self, hostname, username, password, timeout=60, optional_args=None):
@@ -34,9 +45,30 @@ class ROSDriver(NetworkDriver):
         optional_args = optional_args or dict()
         self.port = optional_args.get('port', 8728)
         self.api = None
+        self.candidate_config = list()
 
     def close(self):
         self.api.close()
+
+    def load_replace_candidate(self, filename=None, config=None):
+        """Prepare config from file/string ready to be commited."""
+        self.candidate_config = get_config(filename, config)
+
+    def discard_config(self):
+        "MikroTik does not have any rollback/commit exposed via API."
+        self.candidate_config = dict()
+
+    def commit_config(self):
+        for menu in self.candidate_config['paths']:
+            wanted = menu['rules']
+            present = self.api(self.api.joinPath(menu['path'], 'print'))
+            commands = tuple(cmd for cmd in compare(wanted, present))
+            self._execute(menu['path'], commands)
+
+    def _execute(self, path, operations):
+        for op in operations:
+            cmd = self.api.joinPath(path, op.cmd)
+            self.api(cmd, **cmd.args)
 
     def is_alive(self):
         '''No ping method is exposed from API'''
@@ -225,3 +257,39 @@ class ROSDriver(NetworkDriver):
     def _system_package_enabled(self, package):
         enabled = (pkg['name'] for pkg in self.api('/system/package/print') if not pkg['disabled'])
         return package in enabled
+
+
+def decide(wanted, difference, present):
+    if wanted and difference and not present:
+        return opcmd(cmd='add', args=wanted)
+    elif not wanted and not difference and present:
+        return opcmd(cmd='remove', args=present)
+    elif wanted and difference and present:
+        # Some menus e.g. /snmp are single row only without any .id
+        if difference.get('.id'):
+            difference['.id'] = present['.id']
+        return opcmd(cmd='set', args=difference)
+
+
+def compare(wanted, present):
+    for wanted_rule, present_rule in zipper(wanted, present, fillvalue=dict()):
+        diff = difference(wanted_rule, present_rule)
+        op = decide(wanted_rule, diff, present_rule)
+        if op:
+            yield op
+
+
+def difference(wanted, present):
+    return dict(set(wanted.items()) - set(present.items()))
+
+
+def get_config(filename, config):
+    """Return configuration from file or config."""
+    if filename and config:
+        with open(filename, 'rt') as f:
+            return json.load(f)
+    if filename:
+        with open(filename, 'rt') as f:
+            return json.load(f)
+    if config:
+        return json.loads(config)

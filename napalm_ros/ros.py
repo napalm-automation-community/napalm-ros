@@ -64,7 +64,7 @@ class ROSDriver(NetworkDriver):
     def _execute(self, path, operations):
         for op in operations:
             cmd = self.api.joinPath(path, op.cmd)
-            self.api(cmd, **cmd.args)
+            self.api(cmd, **op.args)
 
     def is_alive(self):
         '''No ping method is exposed from API'''

@@ -169,7 +169,7 @@ class ROSDriver(NetworkDriver):
             interfaces_ip.setdefault(ifname, dict())
             interfaces_ip[ifname]['ipv4'] = iface_addresses(ipv4_addresses, ifname)
 
-        ipv6_addresses = self.api('/ip6/address/print')
+        ipv6_addresses = self.api('/ipv6/address/print')
         for ifname in (row['interface'] for row in ipv6_addresses):
             interfaces_ip.setdefault(ifname, dict())
             interfaces_ip[ifname]['ipv6'] = iface_addresses(ipv6_addresses, ifname)

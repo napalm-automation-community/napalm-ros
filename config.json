@@ -1,0 +1,16 @@
+{
+	"paths":[
+		{
+			"path":"/queue/simple",
+			"rules":[
+				{"name":"test_client", "max-limit":"50000000/50000000"}
+				]
+		},
+		{
+			"path":"/system/ntp/client",
+			"rules":[
+				{"primary-ntp":"213.222.193.35", "secondary-ntp":"193.0.71.133", "enabled":true}
+				]
+		}
+	]
+}

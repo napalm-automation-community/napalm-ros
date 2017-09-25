@@ -1,0 +1,16 @@
+[
+    {
+        "interface": "vlan400",
+        "mac": "00:05:73:A0:00:02",
+        "ip": "fe80:0:9ff:1::1",
+        "age": -1.0,
+        "state": "stale"
+    },
+    {
+        "interface": "vlan5",
+        "mac": "40:6C:8F:20:6B:50",
+        "ip": "2001:db8:aa:def8:ac13:4591:1a09:2",
+        "age": -1.0,
+        "state": "stale"
+    }
+]

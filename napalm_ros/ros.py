@@ -51,6 +51,22 @@ class ROSDriver(NetworkDriver):
             )
         return arp_table
 
+    def get_ipv6_neighbors_table(self):
+        ipv6_neighbors_table = []
+        for entry in self.api('/ipv6/neighbor/print'):
+            if 'mac-address' not in entry:
+                continue
+            ipv6_neighbors_table.append(
+                {
+                    'interface': entry['interface'],
+                    'mac': cast_mac(entry['mac-address']),
+                    'ip': cast_ip(entry['address']),
+                    'age': float(-1),
+                    'state': entry['status']
+                }
+            )
+        return ipv6_neighbors_table
+
     def get_environment(self):
         environment = {
             'fans': {},

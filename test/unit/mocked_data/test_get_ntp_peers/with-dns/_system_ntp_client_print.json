@@ -1,0 +1,17 @@
+{
+    "data":
+    [
+        {
+            "last-update-from": "193.25.222.240",
+            "last-adjustment": "-34ms994us",
+            "primary-ntp": "0.0.0.0",
+            "secondary-ntp": "0.0.0.0",
+            "enabled": true,
+            "server-dns-names": "0.pl.pool.ntp.org,1.pl.pool.ntp.org,2.pl.pool.ntp.org,3.pl.pool.ntp.org",
+            "mode": "unicast",
+            "active-server": "193.25.222.240",
+            "last-update-before": "11m46s460ms",
+            "poll-interval": "15m"
+        }
+    ]
+}

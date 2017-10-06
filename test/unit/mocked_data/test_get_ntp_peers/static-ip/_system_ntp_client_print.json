@@ -1,0 +1,17 @@
+{
+    "data":
+    [
+        {
+            "last-update-from": "193.25.222.240",
+            "last-adjustment": "-34ms994us",
+            "primary-ntp": "193.25.222.240",
+            "secondary-ntp": "193.25.222.241",
+            "enabled": true,
+            "server-dns-names": "",
+            "mode": "unicast",
+            "active-server": "193.25.222.240",
+            "last-update-before": "11m46s460ms",
+            "poll-interval": "15m"
+        }
+    ]
+}

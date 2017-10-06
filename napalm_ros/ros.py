@@ -234,6 +234,16 @@ class ROSDriver(NetworkDriver):
 
         return dict(success=ping_results)
 
+    def get_ntp_peers(self):
+        peers = self.api('/system/ntp/client/print')[0]
+        result = dict()
+        for key in ('primary-ntp', 'secondary-ntp', 'active-server'):
+            address = peers.get(key)
+            if address and address != '0.0.0.0':
+                result[address] = dict()
+
+        return result
+
     def _system_package_enabled(self, package):
         enabled = (pkg['name'] for pkg in self.api('/system/package/print') if not pkg['disabled'])
         return package in enabled

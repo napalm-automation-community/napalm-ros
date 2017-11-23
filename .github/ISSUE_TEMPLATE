@@ -10,7 +10,7 @@
 ```
 
 ### ROS version
-(Paste verbatim output from `show version` between quotes below)
+(Paste verbatim output from `/system package print` between quotes below)
 
 ```
 

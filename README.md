@@ -7,9 +7,8 @@
 
 As napalm-ros uses API, several caveats exist.
 
-# No safe mode (not exposed via API). There is no commit, rollback.
-# API is not versioned so things may break when routeros is upgraded.
-# MikroTik does not have any config replace (within the meaning of e.g. cisco ios config replace). In order to do this you need to write every thing. Including what you do not want.
+* No safe mode (not exposed via API). There is no commit, rollback.
+* API is not versioned so things may break when routeros is upgraded.
 
 
 ### Missing features.

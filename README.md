@@ -1,8 +1,33 @@
+[![Build Status](https://travis-ci.org/napalm-automation-community/napalm-ros.svg?branch=develop)](https://travis-ci.org/napalm-automation-community/napalm-ros)
 [![PyPI](https://img.shields.io/pypi/v/napalm-ros.svg)](https://pypi.python.org/pypi/napalm-ros)
-[![PyPI](https://img.shields.io/pypi/dm/napalm-ros.svg)](https://pypi.python.org/pypi/napalm-ros)
-[![Build Status](https://travis-ci.org/napalm-automation/napalm-ros.svg?branch=master)](https://travis-ci.org/napalm-automation/napalm-ros)
-[![Coverage Status](https://coveralls.io/repos/github/napalm-automation/napalm-ros/badge.svg?branch=master)](https://coveralls.io/github/napalm-automation/napalm-ros)
+[![Supported python versions](https://img.shields.io/pypi/pyversions/napalm-ros.svg)](https://pypi.python.org/pypi/napalm-ros/)
 
 
-napalm-ros
-===========
+### Caveats
+
+As napalm-ros uses API, several caveats exist.
+
+* No safe mode (not exposed via API). There is no commit, rollback.
+* API is not versioned so things may break when routeros is upgraded.
+
+
+### Missing features.
+
+This driver does not implement any configuration management. Config management on mikrotik is different than on cisco, juniper etc. which provide
+`config replace`. You provide a plain text config file and replace running config with that. MikroTik does not have this. Some menu paths (eg. /ip
+address) do not have any order in which entries appear. Only one unique ip address can exist within a VRF. In some paths (eg. /ip firewall filter)
+order matter.
+
+
+### Implemented getters
+
+* get_arp_table
+* get_environment
+* get_facts
+* get_interfaces
+* get_interfaces_ip
+* get_ntp_servers
+* get_snmp_information
+* get_users
+* is_alive
+* ping

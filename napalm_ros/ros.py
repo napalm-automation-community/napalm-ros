@@ -11,12 +11,12 @@ from librouteros.exceptions import ConnectionError
 from librouteros.exceptions import MultiTrapError
 
 # Import NAPALM base
-from napalm_base import NetworkDriver
-import napalm_base.utils.string_parsers
-import napalm_base.constants as C
-from napalm_base.helpers import ip as cast_ip
-from napalm_base.helpers import mac as cast_mac
-from napalm_base.exceptions import ConnectionException
+from napalm.base import NetworkDriver
+import napalm.base.utils.string_parsers
+import napalm.base.constants as C
+from napalm.base.helpers import ip as cast_ip
+from napalm.base.helpers import mac as cast_mac
+from napalm.base.exceptions import ConnectionException
 
 # Import local modules
 from napalm_ros.utils import to_seconds
@@ -75,6 +75,22 @@ class ROSDriver(NetworkDriver):
                 }
             )
         return arp_table
+
+    def get_ipv6_neighbors_table(self):
+        ipv6_neighbors_table = []
+        for entry in self.api('/ipv6/neighbor/print'):
+            if 'mac-address' not in entry:
+                continue
+            ipv6_neighbors_table.append(
+                {
+                    'interface': entry['interface'],
+                    'mac': cast_mac(entry['mac-address']),
+                    'ip': cast_ip(entry['address']),
+                    'age': float(-1),
+                    'state': entry['status']
+                }
+            )
+        return ipv6_neighbors_table
 
     def get_environment(self):
         environment = {
@@ -135,7 +151,7 @@ class ROSDriver(NetworkDriver):
             'fqdn': u'',
             'os_version': resource['version'],
             'serial_number': routerboard.get('serial-number', ''),
-            'interface_list': napalm_base.utils.string_parsers.sorted_nicely(
+            'interface_list': napalm.base.utils.string_parsers.sorted_nicely(
                 tuple(iface['name'] for iface in interfaces)
             ),
         }

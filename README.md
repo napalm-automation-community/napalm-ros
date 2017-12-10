@@ -22,6 +22,7 @@ order matter.
 ### Implemented getters
 
 * get_arp_table
+* get_interfaces_counters
 * get_environment
 * get_facts
 * get_interfaces
@@ -29,5 +30,6 @@ order matter.
 * get_ntp_servers
 * get_snmp_information
 * get_users
+* get_ipv6_neighbors_table
 * is_alive
 * ping

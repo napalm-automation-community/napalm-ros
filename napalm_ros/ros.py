@@ -250,9 +250,10 @@ class ROSDriver(NetworkDriver):
         if source:
             params['src-address'] = source
         if vrf:
-            params['routing-instance'] = vrf
+            params['routing-table'] = vrf
 
         results = self.api('/ping', **params)
+#        return results
 
         ping_results = {
             'probes_sent': max(row['sent'] for row in results),
@@ -260,7 +261,7 @@ class ROSDriver(NetworkDriver):
             'rtt_min': min(float(row.get('min-rtt', '-1ms').replace('ms', '')) for row in results),
             'rtt_max': max(float(row.get('max-rtt', '-1ms').replace('ms', '')) for row in results),
             # Last result has calculated avg
-            'rtt_avg': float(results[-1:][0]['avg-rtt'].replace('ms', '')),
+            'rtt_avg': float(results[-1].get('avg-rtt', '-1ms').replace('ms', '')),
             'rtt_stddev': float(-1),
             'results': []
         }

@@ -250,7 +250,7 @@ class ROSDriver(NetworkDriver):
         if source:
             params['src-address'] = source
         if vrf:
-            params['routing-instance'] = vrf
+            params['routing-table'] = vrf
 
         results = self.api('/ping', **params)
 

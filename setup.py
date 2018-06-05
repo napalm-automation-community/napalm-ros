@@ -14,7 +14,7 @@ def parse_reqs(file_path):
 
 setup(
     name="napalm-ros",
-    version=check_output('git describe --tags'.split()).strip().encode(),
+    version=check_output('git describe --tags'.split()).strip().decode(),
     packages=find_packages(),
     author="Matt Ryan",
     author_email="inetuid@gmail.com",

@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+from subprocess import check_output
 
 __author__ = 'Matt Ryan <inetuid@gmail.com>'
 
@@ -13,7 +14,7 @@ def parse_reqs(file_path):
 
 setup(
     name="napalm-ros",
-    version="0.3.2",
+    version=check_output('git describe --tags'.split()).strip().encode(),
     packages=find_packages(),
     author="Matt Ryan",
     author_email="inetuid@gmail.com",

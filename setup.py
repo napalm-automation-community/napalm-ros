@@ -13,7 +13,7 @@ def parse_reqs(file_path):
 
 setup(
     name="napalm-ros",
-    version="0.3.2",
+    version="0.3.1",
     packages=find_packages(),
     author="Matt Ryan",
     author_email="inetuid@gmail.com",

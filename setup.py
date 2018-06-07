@@ -1,14 +1,15 @@
-"""setup.py file."""
-
-import uuid
-
 from setuptools import setup, find_packages
-from pip.req import parse_requirements
 
 __author__ = 'Matt Ryan <inetuid@gmail.com>'
 
-install_reqs = parse_requirements('requirements.txt', session=uuid.uuid1())
-reqs = [str(ir.req) for ir in install_reqs]
+
+def parse_reqs(file_path):
+    with open(file_path, 'rt') as fobj:
+        lines = map(str.strip, fobj)
+        lines = filter(None, lines)
+        lines = filter(lambda x: x.startswith("#"), lines)
+        return tuple(lines)
+
 
 setup(
     name="napalm-ros",
@@ -32,5 +33,5 @@ setup(
     ],
     url="https://github.com/napalm-automation-community/napalm-ros",
     include_package_data=True,
-    install_requires=reqs,
+    install_requires=parse_reqs('requirements.txt'),
 )

@@ -4,6 +4,7 @@ notifications:
     on_failure: change
 sudo: false
 language: python
+cache: pip
 python:
 - 2.7
 - 3.4

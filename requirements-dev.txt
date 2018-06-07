@@ -1,3 +1,5 @@
 mock
 pytest
 pylama
+pip
+setuptools

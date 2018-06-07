@@ -1,3 +1,2 @@
 napalm==2.*
-chainmap
 librouteros==1.*

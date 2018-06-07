@@ -3,6 +3,10 @@ from setuptools import setup, find_packages
 __author__ = 'Matt Ryan <inetuid@gmail.com>'
 
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
+
 def parse_reqs(file_path):
     with open(file_path, 'rt') as fobj:
         lines = map(str.strip, fobj)
@@ -18,6 +22,8 @@ setup(
     author="Matt Ryan",
     author_email="inetuid@gmail.com",
     description="Network Automation and Programmability Abstraction Layer driver for Mikrotik ROS",
+    long_description_content_type="text/markdown",
+    long_description=long_description,
     classifiers=[
         'Topic :: Utilities',
         'Programming Language :: Python',

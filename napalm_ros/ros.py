@@ -183,7 +183,7 @@ class ROSDriver(NetworkDriver):
             for ifname in (row['interface'] for row in ipv6_addresses):
                 interfaces_ip.setdefault(ifname, dict())
                 interfaces_ip[ifname]['ipv6'] = iface_addresses(ipv6_addresses, ifname)
-        except (TrapError, MultiTrapError) as error:
+        except (TrapError, MultiTrapError):
             pass
 
         return interfaces_ip

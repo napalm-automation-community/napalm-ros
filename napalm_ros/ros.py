@@ -282,6 +282,6 @@ class ROSDriver(NetworkDriver):
         enabled = (pkg['name'] for pkg in self.api('/system/package/print') if not pkg['disabled'])
         return package in enabled
 
-    def cli(self,command):
+    def cli(self, command):
         result = self.api(command)
         return result

@@ -66,8 +66,10 @@ class ROSDriver(NetworkDriver):
             vrfs = self.api('/ip/route/vrf/print')
             vrfs = find(vrfs, key='routing-mark', value=vrf)
             interfaces = tuple(splitKey(vrfs, 'interfaces'))
-            arp_table = list(entry for entry in self.arp if
-                    entry['interface'] in interfaces)
+            arp_table = list(
+                    entry for entry in self.arp if
+                    entry['interface'] in interfaces
+                    )
         else:
             arp_table = list(self.arp)
 
@@ -85,7 +87,6 @@ class ROSDriver(NetworkDriver):
                     'ip': cast_ip(entry['address']),
                     'age': float(-1),
                 }
-
 
     def get_ipv6_neighbors_table(self):
         ipv6_neighbors_table = []

@@ -61,20 +61,31 @@ class ROSDriver(NetworkDriver):
 
         return result
 
-    def get_arp_table(self):
-        arp_table = []
+    def get_arp_table(self, vrf=""):
+        if vrf:
+            vrfs = self.api('/ip/route/vrf/print')
+            vrfs = find(vrfs, key='routing-mark', value=vrf)
+            interfaces = tuple(splitKey(vrfs, 'interfaces'))
+            arp_table = list(entry for entry in self.arp if
+                    entry['interface'] in interfaces)
+        else:
+            arp_table = list(self.arp)
+
+        return arp_table
+
+    @property
+    def arp(self):
         for entry in self.api('/ip/arp/print'):
             if 'mac-address' not in entry:
                 continue
-            arp_table.append(
-                {
+            else:
+                yield {
                     'interface': entry['interface'],
                     'mac': cast_mac(entry['mac-address']),
                     'ip': cast_ip(entry['address']),
                     'age': float(-1),
                 }
-            )
-        return arp_table
+
 
     def get_ipv6_neighbors_table(self):
         ipv6_neighbors_table = []
@@ -281,3 +292,15 @@ class ROSDriver(NetworkDriver):
     def _system_package_enabled(self, package):
         enabled = (pkg['name'] for pkg in self.api('/system/package/print') if not pkg['disabled'])
         return package in enabled
+
+
+def find(haystack, key, value):
+    for row in haystack:
+        if row.get(key) == value:
+            yield row
+
+
+def splitKey(haystack, key):
+    for row in haystack:
+        for item in row[key].split(','):
+            yield item

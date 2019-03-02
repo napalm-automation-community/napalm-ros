@@ -1,0 +1,10 @@
+{
+    "data":
+    [
+    {
+        "interfaces": "ether2",
+        "routing-mark": "TEST"
+    }
+    ]
+}
+

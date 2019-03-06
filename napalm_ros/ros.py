@@ -200,6 +200,17 @@ class ROSDriver(NetworkDriver):
 
         return interfaces_ip
 
+    def get_lldp_neighbors(self):
+        neighbours = {}
+        for row in self.api('/ip/neighbor/print'):
+            interface = row['interface']
+            neighbours.setdefault(interface, [])
+            neighbours[interface].append({
+                'hostname': row['identity'],
+                'port': row['interface-name']
+            })
+        return neighbours
+
     def get_ntp_servers(self):
         ntp_servers = {}
         ntp_client_values = self.api('/system/ntp/client/print')[0]

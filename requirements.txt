@@ -1,2 +1,0 @@
-napalm==2.*
-librouteros==2.*

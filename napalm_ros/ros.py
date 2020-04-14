@@ -199,8 +199,15 @@ class ROSDriver(NetworkDriver):
     def get_ntp_servers(self):
         ntp_servers = {}
         ntp_client_values = self.api('/system/ntp/client/print')[0]
-        for ntp_peer in ntp_client_values.get('server-dns-names', '').split(','):
+        fqdn_ntp_servers = filter(None, ntp_client_values.get('server-dns-names', '').split(','))
+        for ntp_peer in fqdn_ntp_servers:
             ntp_servers[ntp_peer] = {}
+        primary_ntp = ntp_client_values.get('primary-ntp')
+        secondary_ntp = ntp_client_values.get('secondary-ntp')
+        if primary_ntp and primary_ntp != '0.0.0.0':
+            ntp_servers[primary_ntp] = {}
+        if secondary_ntp != '0.0.0.0':
+            ntp_servers[secondary_ntp] = {}
         return ntp_servers
 
     def get_snmp_information(self):

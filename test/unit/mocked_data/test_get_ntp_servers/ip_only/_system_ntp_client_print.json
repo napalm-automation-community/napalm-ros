@@ -4,9 +4,9 @@
     {
         "last-update-from": "91.212.242.21",
         "last-adjustment": "-29ms481us",
-        "primary-ntp": "0.0.0.0",
-        "secondary-ntp": "0.0.0.0",
-        "server-dns-names": "0.pl.pool.ntp.org,1.pl.pool.ntp.org,2.pl.pool.ntp.org,3.pl.pool.ntp.org",
+        "primary-ntp": "1.1.1.1",
+        "secondary-ntp": "2.2.2.2",
+        "server-dns-names": "",
         "enabled": true,
         "mode": "unicast",
         "active-server": "91.212.242.21",

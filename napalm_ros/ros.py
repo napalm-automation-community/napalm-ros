@@ -24,6 +24,7 @@ from napalm_ros.utils import iface_addresses
 
 
 class ROSDriver(NetworkDriver):
+
     def __init__(self, hostname, username, password, timeout=60, optional_args=None):
         self.hostname = hostname
         self.username = username
@@ -66,10 +67,7 @@ class ROSDriver(NetworkDriver):
             vrfs = self.api('/ip/route/vrf/print')
             vrfs = find(vrfs, key='routing-mark', value=vrf)
             interfaces = tuple(splitKey(vrfs, 'interfaces'))
-            arp_table = list(
-                    entry for entry in self.arp if
-                    entry['interface'] in interfaces
-                    )
+            arp_table = list(entry for entry in self.arp if entry['interface'] in interfaces)
         else:
             arp_table = list(self.arp)
 
@@ -163,9 +161,7 @@ class ROSDriver(NetworkDriver):
             'fqdn': u'',
             'os_version': resource['version'],
             'serial_number': routerboard.get('serial-number', ''),
-            'interface_list': napalm.base.utils.string_parsers.sorted_nicely(
-                tuple(iface['name'] for iface in interfaces)
-            ),
+            'interface_list': napalm.base.utils.string_parsers.sorted_nicely(tuple(iface['name'] for iface in interfaces)),
         }
 
     def get_interfaces(self):
@@ -176,9 +172,9 @@ class ROSDriver(NetworkDriver):
                 'is_enabled': not entry['disabled'],
                 'description': entry.get('comment', ''),
                 'last_flapped': -1.0,
+                'mtu': entry.get('actual-mtu', 0),
                 'speed': -1,
-                'mac_address': cast_mac(entry['mac-address'])
-                if entry.get('mac-address') else u'',
+                'mac_address': cast_mac(entry['mac-address']) if entry.get('mac-address') else u'',
             }
         return interfaces
 
@@ -227,40 +223,31 @@ class ROSDriver(NetworkDriver):
     def get_users(self):
         users = {}
         for row in self.api('/user/print'):
-            users[row['name']] = {
-                'level': 15 if row['group'] == 'full' else 0,
-                'password': u'',
-                'sshkeys': list()
-            }
+            users[row['name']] = {'level': 15 if row['group'] == 'full' else 0, 'password': u'', 'sshkeys': list()}
         return users
 
     def open(self):
         try:
-            self.api = connect(
-                    host=self.hostname,
-                    username=self.username,
-                    password=self.password,
-                    timeout=self.timeout
-                    )
+            self.api = connect(host=self.hostname, username=self.username, password=self.password, timeout=self.timeout)
         except (TrapError, FatalError, ConnectionError, MultiTrapError) as exc:
-            raise ConnectionException(
-                'Could not connect to {}:{} - [{!r}]'.format(self.hostname, self.port, exc)
-            )
+            raise ConnectionException('Could not connect to {}:{} - [{!r}]'.format(self.hostname, self.port, exc))
 
-    def ping(self,
-             destination,
-             source=C.PING_SOURCE,
-             ttl=C.PING_TTL,
-             timeout=C.PING_TIMEOUT,
-             size=C.PING_SIZE,
-             count=C.PING_COUNT,
-             vrf=C.PING_VRF):
+    def ping(
+        self,
+        destination,
+        source=C.PING_SOURCE,
+        ttl=C.PING_TTL,
+        timeout=C.PING_TIMEOUT,
+        size=C.PING_SIZE,
+        count=C.PING_COUNT,
+        vrf=C.PING_VRF
+    ):
         params = {
-                'count': count,
-                'address': destination,
-                'ttl': ttl,
-                'size': size,
-                'count': count,
+            'count': count,
+            'address': destination,
+            'ttl': ttl,
+            'size': size,
+            'count': count,
         }
         if source:
             params['src-address'] = source
@@ -273,20 +260,17 @@ class ROSDriver(NetworkDriver):
             'probes_sent': max(row['sent'] for row in results),
             'packet_loss': max(row['packet-loss'] for row in results),
             'rtt_min': min(float(row.get('min-rtt', '-1ms').replace('ms', '')) for row in results),
-            'rtt_max': max(float(row.get('max-rtt', '-1ms').replace('ms', '')) for row in results),
-            # Last result has calculated avg
+            'rtt_max': max(float(row.get('max-rtt', '-1ms').replace('ms', '')) for row in results), # Last result has calculated avg
             'rtt_avg': float(results[-1].get('avg-rtt', '-1ms').replace('ms', '')),
             'rtt_stddev': float(-1),
             'results': []
         }
 
         for row in results:
-            ping_results['results'].append(
-                {
-                    'ip_address': cast_ip(row['host']),
-                    'rtt': float(row.get('time', '-1ms').replace('ms', '')),
-                }
-            )
+            ping_results['results'].append({
+                'ip_address': cast_ip(row['host']),
+                'rtt': float(row.get('time', '-1ms').replace('ms', '')),
+            })
 
         return dict(success=ping_results)
 

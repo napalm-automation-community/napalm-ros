@@ -5,6 +5,7 @@
         "description": "",
         "last_flapped": -1,
         "speed": -1,
-        "mac_address": ""
+        "mtu": 1500,
+        "mac_address": "08:00:27:A9:3F:55"
     }
 }

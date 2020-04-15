@@ -1,6 +1,6 @@
 from napalm.base.helpers import (
-        ip as cast_ip,
-        )
+    ip as cast_ip,
+)
 
 
 def to_seconds(time_format):

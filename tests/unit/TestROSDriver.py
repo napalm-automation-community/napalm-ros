@@ -20,4 +20,3 @@ class TestConfigROSDriver(unittest.TestCase, TestConfigNetworkDriver):
             },
         )
         cls.device.open()
-

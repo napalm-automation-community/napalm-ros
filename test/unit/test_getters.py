@@ -2,7 +2,6 @@
 
 from napalm.base.test.getters import BaseTestGetters
 
-
 import pytest
 
 

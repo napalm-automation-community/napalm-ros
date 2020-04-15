@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - 3.6
+          - 3.7
+          - 3.8
+          - 2.7
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test requirements
+        run: pip install -U -r requirements-dev.txt
+
+      - name: Install package
+        run: pip install -e .
+
+      - name: Lint
+        run: pylama .
+
+      - name: Format
+        run: >
+          yapf -dr
+          napalm_ros
+          tests
+
+      - name: Unit tests
+        run: pytest tests

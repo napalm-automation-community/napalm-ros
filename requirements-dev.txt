@@ -3,3 +3,4 @@ pytest
 pylama
 pip
 setuptools
+yapf

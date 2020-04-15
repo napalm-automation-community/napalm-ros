@@ -10,6 +10,7 @@ napalm-ros = {editable = true,path = "."}
 pytest = "*"
 pylama = "*"
 yapf = "*"
+bumpversion = "*"
 
 [requires]
 python_version = "3.7"

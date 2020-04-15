@@ -41,6 +41,9 @@ jobs:
       - name: Unit tests
         run: pytest tests
 
+      - name: Package
+        run: python setup.py sdist
+
       - name: Publish package
         if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') && ${{ matrix.python-version }} == '3.7'
         uses: pypa/gh-action-pypi-publish@master

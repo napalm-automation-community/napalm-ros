@@ -1,0 +1,9 @@
+{
+    "data": [
+        {
+            "routing-mark": "test",
+            "interfaces": "ether1,ether2",
+            "route-distinguisher": "1:1"
+        }
+    ]
+}

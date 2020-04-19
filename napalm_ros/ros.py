@@ -73,6 +73,69 @@ class ROSDriver(NetworkDriver):
 
         return arp_table
 
+    def get_mac_address_table(self):
+        table = list()
+        for entry in self.api('/interface/ethernet/switch/unicast-fdb/print'):
+            table.append(
+                dict(
+                    mac=entry['mac-address'],
+                    interface=entry['port'],
+                    vlan=entry['vlan-id'],
+                    static=not entry['dynamic'],
+                    active=entry['active'],
+                    moves=0,
+                    last_move=0.0,
+                )
+            )
+        return table
+
+    def get_network_instances(self, name=""):
+        instances = dict()
+        for inst in self.api('/ip/route/vrf/print'):
+            ifaces = inst.get('interfaces').split(',')
+            ifaces_dict = dict((iface, dict()) for iface in ifaces)
+            instances[inst['routing-mark']] = dict(
+                name=inst['routing-mark'],
+                type=u'L3VRF',
+                state=dict(route_distinguisher=inst.get('route-distinguisher')),
+                interfaces=dict(interface=ifaces_dict),
+            )
+        if not name:
+            return instances
+        return instances[name]
+
+    def get_lldp_neighbors(self):
+        table = dict()
+        for entry in self.api('/ip/neighbor/print'):
+            for iface in entry['interface'].split(','):
+                table[iface] = list()
+                table[iface].append(dict(
+                    hostname=entry['identity'],
+                    port=entry['interface-name'],
+                ))
+        return table
+
+    def get_lldp_neighbors_detail(self, interface=""):
+        table = dict()
+        for entry in self.api('/ip/neighbor/print'):
+            for iface in entry['interface'].split(','):
+                table[iface] = list()
+                table[iface].append(
+                    dict(
+                        parent_interface=iface,
+                        remote_chassis_id=entry['mac-address'],
+                        remote_system_name=entry['identity'],
+                        remote_port=entry['interface-name'],
+                        remote_port_description='',
+                        remote_system_description=entry['system-description'],
+                        remote_system_capab=entry['system-caps'].split(','),
+                        remote_system_enable_capab=entry['system-caps-enabled'].split(','),
+                    )
+                )
+        if not interface:
+            return table
+        return table[interface]
+
     @property
     def arp(self):
         for entry in self.api('/ip/arp/print'):

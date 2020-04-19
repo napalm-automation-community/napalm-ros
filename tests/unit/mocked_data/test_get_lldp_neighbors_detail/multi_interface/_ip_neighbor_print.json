@@ -1,0 +1,23 @@
+{
+    "data": [
+        {
+            ".id": "*1F",
+            "interface": "ether3,br-lan",
+            "address": "172.31.1.12",
+            "address4": "172.31.1.12",
+            "mac-address": "4C:5E:0C:12:AA:CC",
+            "identity": "sw",
+            "platform": "MikroTik",
+            "version": "6.40.8 (bugfix)",
+            "unpack": "none",
+            "age": "49s",
+            "uptime": "8w6d6h18m17s",
+            "software-id": "AAAA-AAAA",
+            "board": "CRS112-8G-4S",
+            "interface-name": "ether1",
+            "system-description": "MikroTik RouterOS 6.40.8 (bugfix) CRS112-8G-4S",
+            "system-caps": "bridge,router",
+            "system-caps-enabled": "router"
+        }
+    ]
+}

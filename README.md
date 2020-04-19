@@ -33,3 +33,7 @@ order matter.
 * get_ipv6_neighbors_table
 * is_alive
 * ping
+* get_lldp_neighbors
+* get_lldp_neighbors_detail
+* get_network_instances
+* get_mac_address_table

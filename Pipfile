@@ -11,6 +11,8 @@ pytest = "*"
 pylama = "*"
 yapf = "*"
 bumpversion = "*"
+mock = "*"
+pylint = "*"
 
 [requires]
 python_version = "3.7"

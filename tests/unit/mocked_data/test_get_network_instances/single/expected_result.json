@@ -1,0 +1,15 @@
+{
+    "test": {
+        "name": "test",
+        "type": "L3VRF",
+        "state": {
+            "route_distinguisher": "1:1"
+        },
+        "interfaces": {
+            "interface": {
+                "ether1": {},
+                "ether2": {}
+            }
+        }
+    }
+}

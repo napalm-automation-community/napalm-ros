@@ -1,0 +1,32 @@
+{
+    "ether3": [
+        {
+            "parent_interface": "ether3",
+            "remote_chassis_id": "4C:5E:0C:12:AA:CC",
+            "remote_system_name":"sw",
+            "remote_port": "ether1",
+            "remote_system_description": "MikroTik RouterOS 6.40.8 (bugfix) CRS112-8G-4S",
+            "remote_port_description": "",
+            "remote_system_capab": [
+                "bridge",
+                "router"
+            ],
+            "remote_system_enable_capab": ["router"]
+        }
+    ],
+    "br-lan": [
+        {
+            "parent_interface": "br-lan",
+            "remote_chassis_id": "4C:5E:0C:12:AA:CC",
+            "remote_system_name":"sw",
+            "remote_port": "ether1",
+            "remote_system_description": "MikroTik RouterOS 6.40.8 (bugfix) CRS112-8G-4S",
+            "remote_port_description": "",
+            "remote_system_capab": [
+                "bridge",
+                "router"
+            ],
+            "remote_system_enable_capab": ["router"]
+        }
+    ]
+}

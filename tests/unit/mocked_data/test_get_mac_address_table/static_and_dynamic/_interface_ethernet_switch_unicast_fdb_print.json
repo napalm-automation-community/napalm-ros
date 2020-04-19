@@ -1,0 +1,34 @@
+{
+    "data": [
+        {
+            ".id": "*10",
+            "mac-address": "00:00:00:11:11:11",
+            "port": "sfp9",
+            "vlan-id": 0,
+            "action": "forward",
+            "mirror": false,
+            "isolation-profile": "promiscuous",
+            "age": 3,
+            "svl": false,
+            "qos-group": "none",
+            "dynamic": false,
+            "active": true,
+            "disabled": false
+        },
+        {
+            ".id": "*11",
+            "mac-address": "00:1E:67:79:B4:41",
+            "port": "ether8",
+            "vlan-id": 0,
+            "action": "forward",
+            "mirror": false,
+            "isolation-profile": "promiscuous",
+            "age": 2,
+            "svl": true,
+            "qos-group": "none",
+            "dynamic": true,
+            "active": true,
+            "disabled": false
+        }
+    ]
+}

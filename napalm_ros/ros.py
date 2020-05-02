@@ -123,13 +123,13 @@ class ROSDriver(NetworkDriver):
                 table[iface].append(
                     dict(
                         parent_interface=iface,
-                        remote_chassis_id=entry['mac-address'],
-                        remote_system_name=entry['identity'],
-                        remote_port=entry['interface-name'],
+                        remote_chassis_id=entry.get('mac-address', ''),
+                        remote_system_name=entry.get('identity', ''),
+                        remote_port=entry.get('interface-name', ''),
                         remote_port_description='',
-                        remote_system_description=entry['system-description'],
-                        remote_system_capab=entry['system-caps'].split(','),
-                        remote_system_enable_capab=entry['system-caps-enabled'].split(','),
+                        remote_system_description=entry.get('system-description', ''),
+                        remote_system_capab=entry.get('system-caps', '').split(','),
+                        remote_system_enable_capab=entry.get('system-caps-enabled', '').split(','),
                     )
                 )
         if not interface:

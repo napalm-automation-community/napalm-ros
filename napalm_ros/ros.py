@@ -126,16 +126,18 @@ class ROSDriver(NetworkDriver):
             parent_interface = interface_name.split('/')[-1]
 
             table.setdefault(interface_name, list())
-            table[interface_name].append(dict(
-                parent_interface=parent_interface,
-                remote_chassis_id=entry.get('mac-address', ''),
-                remote_system_name=entry.get('identity', ''),
-                remote_port=entry.get('interface-name', ''),
-                remote_port_description='',
-                remote_system_description=entry.get('system-description', ''),
-                remote_system_capab=entry.get('system-caps', '').split(','),
-                remote_system_enable_capab=entry.get('system-caps-enabled', '').split(','),
-            ))
+            table[interface_name].append(
+                dict(
+                    parent_interface=parent_interface,
+                    remote_chassis_id=entry.get('mac-address', ''),
+                    remote_system_name=entry.get('identity', ''),
+                    remote_port=entry.get('interface-name', ''),
+                    remote_port_description='',
+                    remote_system_description=entry.get('system-description', ''),
+                    remote_system_capab=entry.get('system-caps', '').split(','),
+                    remote_system_enable_capab=entry.get('system-caps-enabled', '').split(','),
+                )
+            )
         if not interface:
             return table
         return table[interface]

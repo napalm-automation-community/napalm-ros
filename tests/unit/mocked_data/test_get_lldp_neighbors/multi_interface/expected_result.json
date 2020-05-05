@@ -1,11 +1,5 @@
 {
-    "ether3": [
-        {
-            "hostname":"sw",
-            "port": "ether1"
-        }
-    ],
-    "br-lan": [
+    "br-lan/ether3": [
         {
             "hostname":"sw",
             "port": "ether1"

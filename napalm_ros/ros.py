@@ -107,7 +107,8 @@ class ROSDriver(NetworkDriver):
     def get_lldp_neighbors(self):
         table = dict()
         for entry in self.api('/ip/neighbor/print'):
-            interface_name = '/'.join(entry['interface'].split(',')[::-1])  # interface names are the reversed interface e.g. sfp-sfpplus1,bridge will become bridge/sfp-sfpplus1
+            # interface names are the reversed interface e.g. sfp-sfpplus1,bridge will become bridge/sfp-sfpplus1
+            interface_name = '/'.join(entry['interface'].split(',')[::-1])
 
             table.setdefault(interface_name, list())
             table[interface_name].append(
@@ -121,7 +122,8 @@ class ROSDriver(NetworkDriver):
     def get_lldp_neighbors_detail(self, interface=""):
         table = dict()
         for entry in self.api('/ip/neighbor/print'):
-            interface_name = '/'.join(entry['interface'].split(',')[::-1])  # interface names are the reversed interface e.g. sfp-sfpplus1,bridge will become bridge/sfp-sfpplus1
+            # interface names are the reversed interface e.g. sfp-sfpplus1,bridge will become bridge/sfp-sfpplus1
+            interface_name = '/'.join(entry['interface'].split(',')[::-1])
             parent_interface = interface_name.split('/')[-1]  # we define the last part of the interface name as parent interface
 
             table.setdefault(interface_name, list())

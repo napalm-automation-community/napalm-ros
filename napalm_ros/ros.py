@@ -111,12 +111,10 @@ class ROSDriver(NetworkDriver):
             interface_name = '/'.join(entry['interface'].split(',')[::-1])
 
             table.setdefault(interface_name, list())
-            table[interface_name].append(
-                dict(
-                    hostname=entry['identity'],
-                    port=entry['interface-name'],
-                )
-            )
+            table[interface_name].append(dict(
+                hostname=entry['identity'],
+                port=entry['interface-name'],
+            ))
         return table
 
     def get_lldp_neighbors_detail(self, interface=""):
@@ -124,21 +122,20 @@ class ROSDriver(NetworkDriver):
         for entry in self.api('/ip/neighbor/print'):
             # interface names are the reversed interface e.g. sfp-sfpplus1,bridge will become bridge/sfp-sfpplus1
             interface_name = '/'.join(entry['interface'].split(',')[::-1])
-            parent_interface = interface_name.split('/')[-1]  # we define the last part of the interface name as parent interface
+            # we define the last part of the interface name as parent interface
+            parent_interface = interface_name.split('/')[-1]
 
             table.setdefault(interface_name, list())
-            table[interface_name].append(
-                dict(
-                    parent_interface=parent_interface,
-                    remote_chassis_id=entry.get('mac-address', ''),
-                    remote_system_name=entry.get('identity', ''),
-                    remote_port=entry.get('interface-name', ''),
-                    remote_port_description='',
-                    remote_system_description=entry.get('system-description', ''),
-                    remote_system_capab=entry.get('system-caps', '').split(','),
-                    remote_system_enable_capab=entry.get('system-caps-enabled', '').split(','),
-                )
-            )
+            table[interface_name].append(dict(
+                parent_interface=parent_interface,
+                remote_chassis_id=entry.get('mac-address', ''),
+                remote_system_name=entry.get('identity', ''),
+                remote_port=entry.get('interface-name', ''),
+                remote_port_description='',
+                remote_system_description=entry.get('system-description', ''),
+                remote_system_capab=entry.get('system-caps', '').split(','),
+                remote_system_enable_capab=entry.get('system-caps-enabled', '').split(','),
+            ))
         if not interface:
             return table
         return table[interface]

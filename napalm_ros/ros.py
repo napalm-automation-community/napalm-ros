@@ -9,6 +9,7 @@ from librouteros.exceptions import TrapError
 from librouteros.exceptions import FatalError
 from librouteros.exceptions import ConnectionError
 from librouteros.exceptions import MultiTrapError
+import librouteros.login
 
 # Import NAPALM base
 from napalm.base import NetworkDriver
@@ -31,8 +32,19 @@ class ROSDriver(NetworkDriver):
         self.password = password
         self.timeout = timeout
         optional_args = optional_args or dict()
+        self._process_optional_args(optional_args)
         self.port = optional_args.get('port', 8728)
         self.api = None
+
+    def _process_optional_args(self, optional_args={}):
+        self.login_methods = tuple(
+            set(
+                [
+                    getattr(librouteros.login, method, "login_plain")
+                    for method in optional_args.get("login_methods", ["login_token", "login_plain"])
+                ]
+            )
+        )
 
     def close(self):
         self.api.close()
@@ -304,9 +316,15 @@ class ROSDriver(NetworkDriver):
 
     def open(self):
         try:
-            self.api = connect(host=self.hostname, username=self.username, password=self.password, timeout=self.timeout)
+            self.api = connect(
+                host=self.hostname,
+                username=self.username,
+                password=self.password,
+                timeout=self.timeout,
+                login_methods=self.login_methods,
+            )
         except (TrapError, FatalError, ConnectionError, MultiTrapError) as exc:
-            raise ConnectionException('Could not connect to {}:{} - [{!r}]'.format(self.hostname, self.port, exc))
+            raise ConnectionException("Could not connect to {}:{} - [{!r}]".format(self.hostname, self.port, exc))
 
     def ping(
         self,

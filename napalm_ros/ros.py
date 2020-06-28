@@ -10,6 +10,8 @@ from librouteros.exceptions import FatalError
 from librouteros.exceptions import ConnectionError
 from librouteros.exceptions import MultiTrapError
 import librouteros.login
+from librouteros.query import Key
+from netaddr import IPNetwork
 
 # Import NAPALM base
 from napalm.base import NetworkDriver
@@ -73,6 +75,123 @@ class ROSDriver(NetworkDriver):
             stats['rx_broadcast_packets'] += 0
 
         return result
+
+    def get_bgp_neighbors(self):
+        bgp_neighbors = defaultdict(lambda: dict(peers={}))
+        sent_prefixes = defaultdict(lambda: defaultdict(int))
+
+        # Get all configured peers
+        peers = self.api("/routing/bgp/peer/print")
+        # Get all configured advertisements
+        advertisements = self.api("/routing/bgp/advertisements/print")
+        # Count prefixes advertised to each configured peer
+        for route in advertisements:
+            sent_prefixes[route["peer"]]["ipv{}".format(IPNetwork(route["prefix"]).version)] += 1
+        # Calculate stats for each routing bgp instance
+        for inst in self.api("/routing/bgp/instance/print"):
+            instance_name = "global" if inst["name"] == "default" else inst["name"]
+            bgp_neighbors[instance_name]["router_id"] = inst["router-id"]
+            inst_peers = find(peers, key="instance", value=inst["name"])
+            for peer in inst_peers:
+                prefix_stats = {}
+                # Mikrotik prefix counts are not per-AFI so attempt to query
+                # the routing table if more than one address family is present on a peer
+                if len(peer["address-families"].split(",")) > 1:
+                    bgp_key = Key('bgp')
+                    dst_adr_key = Key('dst-address')
+                    rcv_frm_key = Key('received-from')
+
+                    for af in peer["address-families"].split(","):
+                        prefix_count = 0
+                        query_path = "/{}/route".format(af)
+                        for _ in (self.api.path(query_path).select(dst_adr_key).where(bgp_key == True, rcv_frm_key == peer["name"])): # noqa
+                            prefix_count += 1
+                        family = "ipv4" if af == "ip" else af
+                        prefix_stats[family] = {
+                            "sent_prefixes": sent_prefixes[peer["name"]][family],
+                            "accepted_prefixes": prefix_count,
+                            "received_prefixes": prefix_count,
+                        }
+                else:
+                    af = peer["address-families"]
+                    family = "ipv4" if af == "ip" else af
+                    prefix_stats[family] = {
+                        "sent_prefixes": sent_prefixes[peer["name"]][family],
+                        "accepted_prefixes": peer["prefix-count"],
+                        "received_prefixes": peer["prefix-count"],
+                    }
+                peer_cfg = {
+                    "local_as": inst["as"],
+                    "remote_as": peer["remote-as"],
+                    "remote_id": peer["remote-id"],
+                    "is_up": peer["established"],
+                    "is_enabled": True if not peer["disabled"] else False,
+                    "description": peer["name"],
+                    "uptime": to_seconds(peer["uptime"]),
+                    "address_family": prefix_stats,
+                }
+                bgp_neighbors[instance_name]["peers"][peer["remote-address"]] = peer_cfg
+        return dict(bgp_neighbors)
+
+    def get_bgp_neighbors_detail(self, neighbor_address=""):
+        sent_prefixes = defaultdict(int)
+
+        bgp_neighbors = defaultdict(lambda: defaultdict(list))
+        # Get all configured peers
+        peers = self.api("/routing/bgp/peer/print")
+        # Get all configured advertisements
+        advertisements = self.api("/routing/bgp/advertisements/print")
+        # Count prefixes advertised to each configured peer
+        for route in advertisements:
+            sent_prefixes[route["peer"]] += 1
+
+        for inst in self.api("/routing/bgp/instance/print"):
+            instance_name = "global" if inst["name"] == "default" else inst["name"]
+            inst_peers = find(peers, key="instance", value=inst["name"])
+
+            for peer in inst_peers:
+                if neighbor_address and peer["remote-address"] != neighbor_address:
+                    continue
+                peer_details = {
+                    "up": True if peer["established"] else False,
+                    "local_as": inst["as"],
+                    "remote_as": peer["remote-as"],
+                    "router_id": inst["router-id"],
+                    "local_address": peer["local-address"],
+                    "local_address_configured": True if peer["local-address"] else False,
+                    "local_port": 179,
+                    "routing_table": inst["routing-table"],
+                    "remote_address": peer["remote-address"],
+                    "remote_port": 179,
+                    "multihop": peer["multihop"],
+                    "multipath": False,
+                    "remove_private_as": peer["remove-private-as"],
+                    "import_policy": peer["in-filter"],
+                    "export_policy": peer["out-filter"],
+                    "input_messages": peer["updates-received"] + peer["withdrawn-received"],
+                    "output_messages": peer["updates-sent"] + peer["withdrawn-sent"],
+                    "input_updates": peer["updates-received"],
+                    "output_updates": peer["updates-sent"],
+                    "messages_queued_out": 0,
+                    "connection_state": peer["state"],
+                    "previous_connection_state": "",
+                    "last_event": "",
+                    "suppress_4byte_as": True if not peer["as4-capability"] else False,
+                    "local_as_prepend": False,
+                    "holdtime": to_seconds(peer["used-hold-time"]),
+                    "configured_holdtime": to_seconds(peer["hold-time"]),
+                    "keepalive": to_seconds(peer["used-keepalive-time"]),
+                    "configured_keepalive": to_seconds(peer.get("keepalive-time", peer["used-keepalive-time"])),
+                    "active_prefix_count": peer["prefix-count"],
+                    "received_prefix_count": peer["prefix-count"],
+                    "accepted_prefix_count": peer["prefix-count"],
+                    "suppressed_prefix_count": 0,
+                    "advertised_prefix_count": sent_prefixes[peer["name"]],
+                    "flap_count": 0,
+                }
+                bgp_neighbors[instance_name][peer["remote-as"]].append(peer_details)
+
+        return {k: dict(v) for k, v in bgp_neighbors.items()}
 
     def get_arp_table(self, vrf=""):
         if vrf:

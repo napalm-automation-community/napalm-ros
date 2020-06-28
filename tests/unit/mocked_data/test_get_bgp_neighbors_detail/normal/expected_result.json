@@ -1,0 +1,43 @@
+{
+    "global": {
+        "65535": [
+            {
+                "up": true,
+                "local_as": 65534,
+                "remote_as": 65535,
+                "router_id": "0.0.0.0",
+                "local_address": "10.0.0.1",
+                "local_address_configured": true,
+                "local_port": 179,
+                "routing_table": "",
+                "remote_address": "10.0.0.2",
+                "remote_port": 179,
+                "multihop": false,
+                "multipath": false,
+                "remove_private_as": false,
+                "import_policy": "bgp-in",
+                "export_policy": "bgp-out",
+                "input_messages": 9,
+                "output_messages": 1,
+                "input_updates": 9,
+                "output_updates": 1,
+                "messages_queued_out": 0,
+                "connection_state": "established",
+                "previous_connection_state": "",
+                "last_event": "",
+                "suppress_4byte_as": false,
+                "local_as_prepend": false,
+                "holdtime": 30,
+                "configured_holdtime": 30,
+                "keepalive": 10,
+                "configured_keepalive": 10,
+                "active_prefix_count": 1,
+                "received_prefix_count": 1,
+                "accepted_prefix_count": 1,
+                "suppressed_prefix_count": 0,
+                "advertised_prefix_count": 1,
+                "flap_count": 0
+            }
+        ]
+    }
+}

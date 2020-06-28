@@ -1,0 +1,43 @@
+{
+    "data":
+    [
+        {
+            ".id": "*0",
+            "address-families": "ip",
+            "as-override": false,
+            "as4-capability": true,
+            "default-originate": "never",
+            "disabled": false,
+            "established": true,
+            "hold-time": "30s",
+            "in-filter": "bgp-in",
+            "instance": "default",
+            "keepalive-time": "10s",
+            "local-address": "10.0.0.1",
+            "multihop": false,
+            "name": "A Peer",
+            "nexthop-choice": "default",
+            "out-filter": "bgp-out",
+            "passive": false,
+            "prefix-count": 1,
+            "refresh-capability": true,
+            "remote-address": "10.0.0.2",
+            "remote-as": 65535,
+            "remote-hold-time": "3m",
+            "remote-id": "10.0.0.2",
+            "remove-private-as": false,
+            "route-reflect": false,
+            "state": "established",
+            "tcp-md5-key": "*****",
+            "ttl": 255,
+            "updates-received": 9,
+            "updates-sent": 1,
+            "uptime": "19w4d13h22m21s",
+            "use-bfd": false,
+            "used-hold-time": "30s",
+            "used-keepalive-time": "10s",
+            "withdrawn-received": 0,
+            "withdrawn-sent": 0
+        }
+    ]
+}

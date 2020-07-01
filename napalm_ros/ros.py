@@ -189,10 +189,16 @@ class ROSDriver(NetworkDriver):
             'temperature': {},
             'power': {},
             'cpu': {},
-            'memory': {},
+            'memory': {
+                'available_ram': 0,
+                'used_ram': 0,
+            },
         }
 
-        system_health = self.api('/system/health/print')[0]
+        try:
+            system_health = self.api('/system/health/print')[0]
+        except IndexError:
+            return environment
 
         if system_health.get('active-fan', 'none') != 'none':
             environment['fans'][system_health['active-fan']] = {
@@ -218,7 +224,10 @@ class ROSDriver(NetworkDriver):
                 '%usage': float(cpu_values['load']),
             }
 
-        system_resource = self.api('/system/resource/print')[0]
+        try:
+            system_resource = self.api('/system/resource/print')[0]
+        except IndexError:
+            return dict()
 
         total_memory = system_resource.get('total-memory')
         free_memory = system_resource.get('free-memory')

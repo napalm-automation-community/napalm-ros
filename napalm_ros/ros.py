@@ -329,6 +329,7 @@ class ROSDriver(NetworkDriver):
                 host=self.hostname,
                 username=self.username,
                 password=self.password,
+                port=self.port,
                 timeout=self.timeout,
                 login_methods=self.login_methods,
             )

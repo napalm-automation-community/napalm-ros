@@ -114,7 +114,9 @@ class ROSDriver(NetworkDriver):
                     )
                 )
         except librouteros.exceptions.TrapError:
-            pass # This only exists in the CRS1XX and CRS2XX switches
+            # This only exists in the CRS1XX and CRS2XX switches.
+            # Ignore if not present on the current device.
+            pass
 
         return table
 

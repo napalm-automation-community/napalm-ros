@@ -1,16 +1,16 @@
 {
     "data": [
         {
-            '.id': '*131',
-            'bridge': 'Inside',
-            'disabled': False,
-            'dynamic': True,
-            'external': False,
-            'interface': 'ether4',
-            'invalid': False,
-            'local': True,
-            'mac-address': '11:33:55:77:99:AA',
-            'on-interface': 'ether4'
+            ".id": "*131",
+            "bridge": "Inside",
+            "disabled": False,
+            "dynamic": True,
+            "external": False,
+            "interface": "ether4",
+            "invalid": False,
+            "local": True,
+            "mac-address": "11:33:55:77:99:AA",
+            "on-interface": "ether4"
         },
         {
             ".id": "*143",

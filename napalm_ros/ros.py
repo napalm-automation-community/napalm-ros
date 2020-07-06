@@ -87,7 +87,7 @@ class ROSDriver(NetworkDriver):
 
     def get_mac_address_table(self):
         table = list()
-        for entry in self.api('/interface/bridge/host/print'):         
+        for entry in self.api('/interface/bridge/host/print'):
             table.append(
                 dict(
                     mac=entry['mac-address'],
@@ -100,6 +100,7 @@ class ROSDriver(NetworkDriver):
                     last_move=0.0,
                 )
             )
+            
         return table
 
     def get_network_instances(self, name=""):

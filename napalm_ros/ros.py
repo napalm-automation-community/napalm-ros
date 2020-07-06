@@ -92,8 +92,7 @@ class ROSDriver(NetworkDriver):
                 dict(
                     mac=entry['mac-address'],
                     interface=entry['interface'],
-                    # The vid is not consistently set in the API
-                    vlan=entry.get('vid', 0),
+                    vlan=entry.get('vid', 0),     # The vid is not consistently set in the API
                     static=not entry['dynamic'],
                     active=not entry['invalid'],
                     moves=0,

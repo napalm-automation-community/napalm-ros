@@ -100,6 +100,22 @@ class ROSDriver(NetworkDriver):
                 )
             )
 
+        try:
+            for entry in self.api('/interface/ethernet/switch/unicast-fdb/print'):
+                table.append(
+                    dict(
+                        mac=entry['mac-address'],
+                        interface=entry['port'],
+                        vlan=entry['vlan-id'],
+                        static=not entry['dynamic'],
+                        active=entry['active'],
+                        moves=0,
+                        last_move=0.0,
+                    )
+                )
+        except librouteros.exceptions.TrapError:
+            pass # This only exists in the CRS1XX and CRS2XX switches
+
         return table
 
     def get_network_instances(self, name=""):

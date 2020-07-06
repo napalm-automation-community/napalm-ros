@@ -87,14 +87,15 @@ class ROSDriver(NetworkDriver):
 
     def get_mac_address_table(self):
         table = list()
-        for entry in self.api('/interface/ethernet/switch/unicast-fdb/print'):
+        for entry in self.api('/interface/bridge/host/print'):         
             table.append(
                 dict(
                     mac=entry['mac-address'],
-                    interface=entry['port'],
-                    vlan=entry['vlan-id'],
+                    interface=entry['interface'],
+                    # The vid is not consistently set in the API
+                    vlan=entry.get('vid', 0),
                     static=not entry['dynamic'],
-                    active=entry['active'],
+                    active=not entry['invalid'],
                     moves=0,
                     last_move=0.0,
                 )

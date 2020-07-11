@@ -2,7 +2,7 @@
     {
         "mac": "11:33:55:77:99:AA",
         "interface": "ether4",
-        "vlan": 0,
+        "vlan": 1,
         "static": false,
         "active": true,
         "moves": 0,

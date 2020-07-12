@@ -87,18 +87,37 @@ class ROSDriver(NetworkDriver):
 
     def get_mac_address_table(self):
         table = list()
-        for entry in self.api('/interface/ethernet/switch/unicast-fdb/print'):
+        for entry in self.api('/interface/bridge/host/print'):
             table.append(
                 dict(
                     mac=entry['mac-address'],
-                    interface=entry['port'],
-                    vlan=entry['vlan-id'],
+                    interface=entry['interface'],
+                    vlan=entry.get('vid', 1),     # The vid is not consistently set in the API
                     static=not entry['dynamic'],
-                    active=entry['active'],
+                    active=not entry['invalid'],
                     moves=0,
                     last_move=0.0,
                 )
             )
+
+        try:
+            for entry in self.api('/interface/ethernet/switch/unicast-fdb/print'):
+                table.append(
+                    dict(
+                        mac=entry['mac-address'],
+                        interface=entry['port'],
+                        vlan=entry['vlan-id'],
+                        static=not entry['dynamic'],
+                        active=entry['active'],
+                        moves=0,
+                        last_move=0.0,
+                    )
+                )
+        except librouteros.exceptions.TrapError:
+            # This only exists in the CRS1XX and CRS2XX switches.
+            # Ignore if not present on the current device.
+            pass
+
         return table
 
     def get_network_instances(self, name=""):

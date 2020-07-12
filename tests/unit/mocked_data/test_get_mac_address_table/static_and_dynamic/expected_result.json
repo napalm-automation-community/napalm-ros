@@ -1,5 +1,32 @@
 [
     {
+        "mac": "11:33:55:77:99:AA",
+        "interface": "ether4",
+        "vlan": 1,
+        "static": false,
+        "active": true,
+        "moves": 0,
+        "last_move": 0
+    },
+    {
+        "mac": "11:22:33:44:55:66",
+        "interface": "ether3",
+        "vlan": 1,
+        "static": false,
+        "active": true,
+        "moves": 0,
+        "last_move": 0
+    },
+    {
+        "mac": "AA:BB:CC:DD:EE:FF",
+        "interface": "sfp-sfpplus3",
+        "vlan": 5,
+        "static": false,
+        "active": true,
+        "moves": 0,
+        "last_move": 0
+    },
+    {
         "mac": "00:00:00:11:11:11",
         "interface": "sfp9",
         "vlan": 0,

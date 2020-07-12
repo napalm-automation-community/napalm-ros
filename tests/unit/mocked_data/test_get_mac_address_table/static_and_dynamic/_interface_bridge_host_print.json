@@ -1,0 +1,43 @@
+{
+    "data": [
+        {
+            ".id": "*131",
+            "bridge": "Inside",
+            "disabled": false,
+            "dynamic": true,
+            "external": false,
+            "interface": "ether4",
+            "invalid": false,
+            "local": true,
+            "mac-address": "11:33:55:77:99:AA",
+            "on-interface": "ether4"
+        },
+        {
+            ".id": "*143",
+            "age": "7s",
+            "bridge": "Inside",
+            "disabled": false,
+            "dynamic": true,
+            "external": false,
+            "interface": "ether3",
+            "invalid": false,
+            "local": false,
+            "mac-address": "11:22:33:44:55:66",
+            "on-interface": "ether3",
+            "vid": 1
+        },
+        {
+            ".id": "*13B",
+            "bridge": "DMZ",
+            "disabled": false,
+            "dynamic": true,
+            "external": false,
+            "interface": "sfp-sfpplus3",
+            "invalid": false,
+            "local": true,
+            "mac-address": "AA:BB:CC:DD:EE:FF",
+            "on-interface": "sfp-sfpplus3",
+            "vid": 5
+        }
+    ]
+}

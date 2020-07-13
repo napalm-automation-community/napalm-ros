@@ -125,7 +125,7 @@ class ROSDriver(NetworkDriver):
                     "remote_as": peer["remote-as"],
                     "remote_id": peer["remote-id"],
                     "is_up": peer["established"],
-                    "is_enabled": True if not peer["disabled"] else False,
+                    "is_enabled": not peer["disabled"],
                     "description": peer["name"],
                     "uptime": to_seconds(peer["uptime"]),
                     "address_family": prefix_stats,

@@ -15,7 +15,7 @@ def parse_reqs(file_path):
 
 setup(
     name="napalm-ros",
-    version="0.7.0",
+    version="0.8.0",
     packages=find_packages(),
     author="Łukasz Kostka",
     author_email="lukasz.kostka@netng.pl",

@@ -1,0 +1,22 @@
+{
+    "data":
+    [
+        {
+            ".id": "*0",
+            "name": "default",
+            "as": 65534,
+            "router-id": "0.0.0.0",
+            "redistribute-connected": false,
+            "redistribute-static": false,
+            "redistribute-rip": false,
+            "redistribute-ospf": false,
+            "redistribute-other-bgp": false,
+            "out-filter": "",
+            "client-to-client-reflection": true,
+            "ignore-as-path-len": false,
+            "routing-table": "",
+            "default": true,
+            "disabled": false
+        }
+    ]
+}

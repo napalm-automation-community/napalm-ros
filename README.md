@@ -37,3 +37,5 @@ order matter.
 * get_lldp_neighbors_detail
 * get_network_instances
 * get_mac_address_table
+* get_bgp_neighbors
+* get_bgp_neighbors_detail

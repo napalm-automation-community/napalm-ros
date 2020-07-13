@@ -1,0 +1,23 @@
+{
+    "global": {
+        "peers": {
+            "10.0.0.2": {
+                "address_family": {
+                    "ipv4": {
+                        "accepted_prefixes": 1,
+                        "received_prefixes": 1,
+                        "sent_prefixes": 1
+                    }
+                },
+                "description": "A Peer",
+                "is_enabled": true,
+                "is_up": true,
+                "local_as": 65534,
+                "remote_as": 65535,
+                "remote_id": "10.0.0.2",
+                "uptime": 11884941
+            }
+        },
+        "router_id": "0.0.0.0"
+    }
+}

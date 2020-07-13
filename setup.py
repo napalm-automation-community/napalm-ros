@@ -1,8 +1,5 @@
 from setuptools import setup, find_packages
 
-__author__ = 'Matt Ryan <inetuid@gmail.com>'
-
-
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
@@ -19,8 +16,8 @@ setup(
     name="napalm-ros",
     version="0.7.0",
     packages=find_packages(),
-    author="Matt Ryan",
-    author_email="inetuid@gmail.com",
+    author="Łukasz Kostka",
+    author_email="lukasz.kostka@netng.pl",
     description="Network Automation and Programmability Abstraction Layer driver for Mikrotik ROS",
     long_description_content_type="text/markdown",
     long_description=long_description,

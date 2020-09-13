@@ -2,12 +2,12 @@
 from __future__ import unicode_literals
 
 from collections import defaultdict
+import socket
 
 # Import third party libs
 from librouteros import connect
 from librouteros.exceptions import TrapError
 from librouteros.exceptions import FatalError
-from librouteros.exceptions import ConnectionError
 from librouteros.exceptions import MultiTrapError
 import librouteros.login
 from librouteros.query import Key
@@ -334,7 +334,7 @@ class ROSDriver(NetworkDriver):
         }
 
         try:
-            system_health = self.api('/system/health/print')[0]
+            system_health = tuple(self.api('/system/health/print'))[0]
         except IndexError:
             return environment
 
@@ -363,7 +363,7 @@ class ROSDriver(NetworkDriver):
             }
 
         try:
-            system_resource = self.api('/system/resource/print')[0]
+            system_resource = tuple(self.api('/system/resource/print'))[0]
         except IndexError:
             return dict()
 
@@ -377,10 +377,10 @@ class ROSDriver(NetworkDriver):
         return environment
 
     def get_facts(self):
-        resource = self.api('/system/resource/print')[0]
-        identity = self.api('/system/identity/print')[0]
-        routerboard = self.api('/system/routerboard/print')[0]
-        interfaces = self.api('/interface/print')
+        resource = tuple(self.api('/system/resource/print'))[0]
+        identity = tuple(self.api('/system/identity/print'))[0]
+        routerboard = tuple(self.api('/system/routerboard/print'))[0]
+        interfaces = tuple(self.api('/interface/print'))
         return {
             'uptime': to_seconds(resource['uptime']),
             'vendor': resource['platform'],
@@ -409,13 +409,13 @@ class ROSDriver(NetworkDriver):
     def get_interfaces_ip(self):
         interfaces_ip = {}
 
-        ipv4_addresses = self.api('/ip/address/print')
+        ipv4_addresses = tuple(self.api('/ip/address/print'))
         for ifname in (row['interface'] for row in ipv4_addresses):
             interfaces_ip.setdefault(ifname, dict())
             interfaces_ip[ifname]['ipv4'] = iface_addresses(ipv4_addresses, ifname)
 
         try:
-            ipv6_addresses = self.api('/ipv6/address/print')
+            ipv6_addresses = tuple(self.api('/ipv6/address/print'))
             for ifname in (row['interface'] for row in ipv6_addresses):
                 interfaces_ip.setdefault(ifname, dict())
                 interfaces_ip[ifname]['ipv6'] = iface_addresses(ipv6_addresses, ifname)
@@ -426,7 +426,7 @@ class ROSDriver(NetworkDriver):
 
     def get_ntp_servers(self):
         ntp_servers = {}
-        ntp_client_values = self.api('/system/ntp/client/print')[0]
+        ntp_client_values = tuple(self.api('/system/ntp/client/print'))[0]
         fqdn_ntp_servers = filter(None, ntp_client_values.get('server-dns-names', '').split(','))
         for ntp_peer in fqdn_ntp_servers:
             ntp_servers[ntp_peer] = {}
@@ -446,7 +446,7 @@ class ROSDriver(NetworkDriver):
                 'mode': u'ro' if row.get('read-access') else 'rw',
             }
 
-        snmp_values = self.api('/snmp/print')[0]
+        snmp_values = tuple(self.api('/snmp/print'))[0]
 
         return {
             'chassis_id': snmp_values['engine-id'],
@@ -471,7 +471,7 @@ class ROSDriver(NetworkDriver):
                 timeout=self.timeout,
                 login_methods=self.login_methods,
             )
-        except (TrapError, FatalError, ConnectionError, MultiTrapError) as exc:
+        except (TrapError, FatalError, socket.timeout, socket.error, MultiTrapError) as exc:
             raise ConnectionException("Could not connect to {}:{} - [{!r}]".format(self.hostname, self.port, exc))
 
     def ping(
@@ -496,7 +496,7 @@ class ROSDriver(NetworkDriver):
         if vrf:
             params['routing-table'] = vrf
 
-        results = self.api('/ping', **params)
+        results = tuple(self.api('/ping', **params))
 
         ping_results = {
             'probes_sent': max(row['sent'] for row in results),

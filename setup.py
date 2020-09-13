@@ -4,18 +4,9 @@ from setuptools import setup, find_packages
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-
-def parse_reqs(file_path):
-    with open(file_path, 'rt') as fobj:
-        lines = map(str.strip, fobj)
-        lines = filter(None, lines)
-        lines = filter(lambda x: x.startswith("#"), lines)
-        return tuple(lines)
-
-
 setup(
     name="napalm-ros",
-    version="0.8.0",
+    version="1.0.0",
     packages=find_packages(),
     author="Łukasz Kostka",
     author_email="lukasz.kostka@netng.pl",
@@ -25,12 +16,10 @@ setup(
     classifiers=[
         'Topic :: Utilities',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Operating System :: POSIX :: Linux',
         'Operating System :: Microsoft :: Windows',
         'Operating System :: MacOS',
@@ -38,7 +27,7 @@ setup(
     url="https://github.com/napalm-automation-community/napalm-ros",
     include_package_data=True,
     install_requires=(
-        'napalm==2.*',
-        'librouteros==2.*',
+        'napalm==3.*',
+        'librouteros==3.*',
     ),
 )

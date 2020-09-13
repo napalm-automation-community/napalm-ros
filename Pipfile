@@ -6,13 +6,7 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-napalm-ros = {editable = true,path = "."}
-pytest = "*"
-pylama = "*"
-yapf = "*"
-bumpversion = "*"
-mock = "*"
-pylint = "*"
+napalm-ros = {editable = true, path = "."}
 
 [requires]
-python_version = "3.7"
+python_version = "3.8"

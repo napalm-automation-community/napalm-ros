@@ -42,7 +42,7 @@ class FakeApi(BaseTestDouble):
 
     def __call__(self, command, **kwargs):
         full_path = self.find_file(self.sanitize_text(command) + '.json')
-        return tuple(self.read_json_file(full_path)['data'])
+        yield from self.read_json_file(full_path)['data']
 
     def close(self):
         pass

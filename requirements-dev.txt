@@ -1,6 +1,5 @@
 mock
 pytest
-pylama
 pip
 setuptools
 yapf

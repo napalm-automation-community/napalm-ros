@@ -22,26 +22,26 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install test requirements
-        run: pip install -U -r requirements-dev.txt
+      - name: Install pipenv
+        run: pip install pipenv
 
-      - name: Install package
-        run: pip install -e .
+      - name: Install requirements
+        run: pipenv install
 
       - name: Lint
-        run: pylint napalm_ros
+        run: pipenv run pylint napalm_ros
 
       - name: Format
         run: >
-          yapf -dr
+          pipenv run yapf -dr
           napalm_ros
           tests
 
       - name: Unit tests
-        run: pytest tests
+        run: pipenv run pytest tests
 
       - name: Package
-        run: python setup.py sdist
+        run: pipenv run python setup.py sdist
 
       - name: Publish package
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && matrix.python-version == '3.7'

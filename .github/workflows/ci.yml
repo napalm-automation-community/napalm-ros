@@ -28,9 +28,6 @@ jobs:
       - name: Install package
         run: pip install -e .
 
-      - name: Lint
-        run: pylama .
-
       - name: Format
         run: >
           yapf -dr

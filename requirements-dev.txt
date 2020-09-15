@@ -1,5 +1,0 @@
-mock
-pytest
-pip
-setuptools
-yapf

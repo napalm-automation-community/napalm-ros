@@ -7,6 +7,10 @@ verify_ssl = true
 
 [packages]
 napalm-ros = {editable = true, path = "."}
+mock = "*"
+pytest = "*"
+yapf = "*"
+pylint = "*"
 
 [requires]
 python_version = "3.8"

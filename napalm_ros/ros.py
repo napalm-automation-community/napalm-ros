@@ -26,27 +26,25 @@ from napalm_ros.utils import to_seconds
 from napalm_ros.utils import iface_addresses
 
 
+# pylint: disable=too-few-public-methods,undefined-variable
+class Keys:
+    bgp = Key('bgp')
+    dst_addr = Key('dst-address')
+    rcv_from = Key('received-from')
+
+
+# pylint: disable=too-many-public-methods
 class ROSDriver(NetworkDriver):
 
+    # pylint: disable=super-init-not-called
     def __init__(self, hostname, username, password, timeout=60, optional_args=None):
         self.hostname = hostname
         self.username = username
         self.password = password
         self.timeout = timeout
-        optional_args = optional_args or dict()
-        self._process_optional_args(optional_args)
-        self.port = optional_args.get('port', 8728)
+        self.optional_args = optional_args or dict()
+        self.port = self.optional_args.get('port', 8728)
         self.api = None
-
-    def _process_optional_args(self, optional_args={}):
-        self.login_methods = tuple(
-            set(
-                [
-                    getattr(librouteros.login, method, "login_plain")
-                    for method in optional_args.get("login_methods", ["login_token", "login_plain"])
-                ]
-            )
-        )
 
     def close(self):
         self.api.close()
@@ -76,36 +74,29 @@ class ROSDriver(NetworkDriver):
 
         return result
 
+    # pylint: disable=invalid-name
     def get_bgp_neighbors(self):
         bgp_neighbors = defaultdict(lambda: dict(peers={}))
         sent_prefixes = defaultdict(lambda: defaultdict(int))
 
-        # Get all configured peers
-        peers = self.api("/routing/bgp/peer/print")
-        # Get all configured advertisements
-        advertisements = self.api("/routing/bgp/advertisements/print")
         # Count prefixes advertised to each configured peer
-        for route in advertisements:
+        for route in self.api("/routing/bgp/advertisements/print"):
             sent_prefixes[route["peer"]]["ipv{}".format(IPNetwork(route["prefix"]).version)] += 1
         # Calculate stats for each routing bgp instance
         for inst in self.api("/routing/bgp/instance/print"):
             instance_name = "global" if inst["name"] == "default" else inst["name"]
             bgp_neighbors[instance_name]["router_id"] = inst["router-id"]
-            inst_peers = find(peers, key="instance", value=inst["name"])
+            inst_peers = find(self.api("/routing/bgp/peer/print"), key="instance", value=inst["name"])
             for peer in inst_peers:
                 prefix_stats = {}
                 # Mikrotik prefix counts are not per-AFI so attempt to query
                 # the routing table if more than one address family is present on a peer
                 if len(peer["address-families"].split(",")) > 1:
-                    bgp_key = Key('bgp')
-                    dst_adr_key = Key('dst-address')
-                    rcv_frm_key = Key('received-from')
-
                     for af in peer["address-families"].split(","):
-                        prefix_count = 0
-                        query_path = "/{}/route".format(af)
-                        for _ in (self.api.path(query_path).select(dst_adr_key).where(bgp_key == True, rcv_frm_key == peer["name"])): # noqa
-                            prefix_count += 1
+                        prefix_count = len(self.api.path(f"/{af}/route").select(dst_addr).where(
+                            Keys.bgp == True, # pylint: disable=singleton-comparison
+                            Keys.rcv_from == peer["name"],
+                        ))
                         family = "ipv4" if af == "ip" else af
                         prefix_stats[family] = {
                             "sent_prefixes": sent_prefixes[peer["name"]][family],
@@ -113,14 +104,13 @@ class ROSDriver(NetworkDriver):
                             "received_prefixes": prefix_count,
                         }
                 else:
-                    af = peer["address-families"]
-                    family = "ipv4" if af == "ip" else af
+                    family = "ipv4" if peer["address-families"] == "ip" else af
                     prefix_stats[family] = {
                         "sent_prefixes": sent_prefixes[peer["name"]][family],
                         "accepted_prefixes": peer["prefix-count"],
                         "received_prefixes": peer["prefix-count"],
                     }
-                peer_cfg = {
+                bgp_neighbors[instance_name]["peers"][peer["remote-address"]] = {
                     "local_as": inst["as"],
                     "remote_as": peer["remote-as"],
                     "remote_id": peer["remote-id"],
@@ -130,7 +120,6 @@ class ROSDriver(NetworkDriver):
                     "uptime": to_seconds(peer["uptime"]),
                     "address_family": prefix_stats,
                 }
-                bgp_neighbors[instance_name]["peers"][peer["remote-address"]] = peer_cfg
         return dict(bgp_neighbors)
 
     def get_bgp_neighbors_detail(self, neighbor_address=""):
@@ -153,12 +142,12 @@ class ROSDriver(NetworkDriver):
                 if neighbor_address and peer["remote-address"] != neighbor_address:
                     continue
                 peer_details = {
-                    "up": True if peer["established"] else False,
+                    "up": peer["established"],
                     "local_as": inst["as"],
                     "remote_as": peer["remote-as"],
                     "router_id": inst["router-id"],
                     "local_address": peer["local-address"],
-                    "local_address_configured": True if peer["local-address"] else False,
+                    "local_address_configured": bool(peer["local-address"]),
                     "local_port": 179,
                     "routing_table": inst["routing-table"],
                     "remote_address": peer["remote-address"],
@@ -176,7 +165,7 @@ class ROSDriver(NetworkDriver):
                     "connection_state": peer["state"],
                     "previous_connection_state": "",
                     "last_event": "",
-                    "suppress_4byte_as": True if not peer["as4-capability"] else False,
+                    "suppress_4byte_as": not peer["as4-capability"],
                     "local_as_prepend": False,
                     "holdtime": to_seconds(peer["used-hold-time"]),
                     "configured_holdtime": to_seconds(peer["hold-time"]),
@@ -197,7 +186,7 @@ class ROSDriver(NetworkDriver):
         if vrf:
             vrfs = self.api('/ip/route/vrf/print')
             vrfs = find(vrfs, key='routing-mark', value=vrf)
-            interfaces = tuple(splitKey(vrfs, 'interfaces'))
+            interfaces = tuple(split_key(vrfs, 'interfaces'))
             arp_table = list(entry for entry in self.arp if entry['interface'] in interfaces)
         else:
             arp_table = list(self.arp)
@@ -297,13 +286,13 @@ class ROSDriver(NetworkDriver):
         for entry in self.api('/ip/arp/print'):
             if 'mac-address' not in entry:
                 continue
-            else:
-                yield {
-                    'interface': entry['interface'],
-                    'mac': cast_mac(entry['mac-address']),
-                    'ip': cast_ip(entry['address']),
-                    'age': float(-1),
-                }
+
+            yield {
+                'interface': entry['interface'],
+                'mac': cast_mac(entry['mac-address']),
+                'ip': cast_ip(entry['address']),
+                'age': float(-1),
+            }
 
     def get_ipv6_neighbors_table(self):
         ipv6_neighbors_table = []
@@ -389,7 +378,9 @@ class ROSDriver(NetworkDriver):
             'fqdn': u'',
             'os_version': resource['version'],
             'serial_number': routerboard.get('serial-number', ''),
-            'interface_list': napalm.base.utils.string_parsers.sorted_nicely(tuple(iface['name'] for iface in interfaces)),
+            'interface_list': napalm.base.utils.string_parsers.sorted_nicely(
+                tuple(iface['name'] for iface in interfaces),
+            ),
         }
 
     def get_interfaces(self):
@@ -462,6 +453,8 @@ class ROSDriver(NetworkDriver):
         return users
 
     def open(self):
+        method = self.optional_args.get('login_method', 'plain')
+        method = getattr(librouteros.login, method)
         try:
             self.api = connect(
                 host=self.hostname,
@@ -469,11 +462,13 @@ class ROSDriver(NetworkDriver):
                 password=self.password,
                 port=self.port,
                 timeout=self.timeout,
-                login_methods=self.login_methods,
+                login_method=method,
             )
         except (TrapError, FatalError, socket.timeout, socket.error, MultiTrapError) as exc:
+            # pylint: disable=raise-missing-from
             raise ConnectionException("Could not connect to {}:{} - [{!r}]".format(self.hostname, self.port, exc))
 
+    # pylint: disable=too-many-arguments
     def ping(
         self,
         destination,
@@ -485,7 +480,6 @@ class ROSDriver(NetworkDriver):
         vrf=C.PING_VRF
     ):
         params = {
-            'count': count,
             'address': destination,
             'ttl': ttl,
             'size': size,
@@ -497,12 +491,12 @@ class ROSDriver(NetworkDriver):
             params['routing-table'] = vrf
 
         results = tuple(self.api('/ping', **params))
-
+        rtt = lambda x: (float(row.get(x, '-1ms').replace('ms', '')) for row in results)
         ping_results = {
             'probes_sent': max(row['sent'] for row in results),
             'packet_loss': max(row['packet-loss'] for row in results),
-            'rtt_min': min(float(row.get('min-rtt', '-1ms').replace('ms', '')) for row in results),
-            'rtt_max': max(float(row.get('max-rtt', '-1ms').replace('ms', '')) for row in results), # Last result has calculated avg
+            'rtt_min': min(rtt('min-rtt')),
+            'rtt_max': max(rtt('max-rtt')),                                         # Last result has calculated avg
             'rtt_avg': float(results[-1].get('avg-rtt', '-1ms').replace('ms', '')),
             'rtt_stddev': float(-1),
             'results': []
@@ -516,10 +510,6 @@ class ROSDriver(NetworkDriver):
 
         return dict(success=ping_results)
 
-    def _system_package_enabled(self, package):
-        enabled = (pkg['name'] for pkg in self.api('/system/package/print') if not pkg['disabled'])
-        return package in enabled
-
 
 def find(haystack, key, value):
     for row in haystack:
@@ -527,7 +517,7 @@ def find(haystack, key, value):
             yield row
 
 
-def splitKey(haystack, key):
+def split_key(haystack, key):
     for row in haystack:
         for item in row[key].split(','):
             yield item

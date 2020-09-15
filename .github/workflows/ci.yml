@@ -28,6 +28,9 @@ jobs:
       - name: Install package
         run: pip install -e .
 
+      - name: Lint
+        run: pylint napalm_ros
+
       - name: Format
         run: >
           yapf -dr

@@ -99,25 +99,25 @@ class ROSDriver(NetworkDriver):
                         ))
                         family = "ipv4" if af == "ip" else af
                         prefix_stats[family] = {
-                            "sent_prefixes": sent_prefixes[peer["name"]][family],
+                            "sent_prefixes": sent_prefixes.get(peer["name"], {}).get(family, 0),
                             "accepted_prefixes": prefix_count,
                             "received_prefixes": prefix_count,
                         }
                 else:
                     family = "ipv4" if peer["address-families"] == "ip" else af
                     prefix_stats[family] = {
-                        "sent_prefixes": sent_prefixes[peer["name"]][family],
-                        "accepted_prefixes": peer["prefix-count"],
-                        "received_prefixes": peer["prefix-count"],
+                        "sent_prefixes": sent_prefixes.get(peer["name"], {}).get(family, 0),
+                        "accepted_prefixes": peer.get("prefix-count", 0),
+                        "received_prefixes": peer.get("prefix-count", 0),
                     }
                 bgp_neighbors[instance_name]["peers"][peer["remote-address"]] = {
                     "local_as": inst["as"],
                     "remote_as": peer["remote-as"],
-                    "remote_id": peer["remote-id"],
-                    "is_up": peer["established"],
+                    "remote_id": peer.get("remote-id", ""),
+                    "is_up": peer.get("established", False),
                     "is_enabled": not peer["disabled"],
                     "description": peer["name"],
-                    "uptime": to_seconds(peer["uptime"]),
+                    "uptime": to_seconds(peer.get("uptime", "0s")),
                     "address_family": prefix_stats,
                 }
         return dict(bgp_neighbors)
@@ -142,12 +142,12 @@ class ROSDriver(NetworkDriver):
                 if neighbor_address and peer["remote-address"] != neighbor_address:
                     continue
                 peer_details = {
-                    "up": peer["established"],
+                    "up": peer.get("established", False),
                     "local_as": inst["as"],
                     "remote_as": peer["remote-as"],
                     "router_id": inst["router-id"],
-                    "local_address": peer["local-address"],
-                    "local_address_configured": bool(peer["local-address"]),
+                    "local_address": peer.get("local-address", False),
+                    "local_address_configured": bool(peer.get("local-address", False)),
                     "local_port": 179,
                     "routing_table": inst["routing-table"],
                     "remote_address": peer["remote-address"],
@@ -157,25 +157,25 @@ class ROSDriver(NetworkDriver):
                     "remove_private_as": peer["remove-private-as"],
                     "import_policy": peer["in-filter"],
                     "export_policy": peer["out-filter"],
-                    "input_messages": peer["updates-received"] + peer["withdrawn-received"],
-                    "output_messages": peer["updates-sent"] + peer["withdrawn-sent"],
-                    "input_updates": peer["updates-received"],
-                    "output_updates": peer["updates-sent"],
+                    "input_messages": peer.get("updates-received", 0) + peer.get("withdrawn-received", 0),
+                    "output_messages": peer.get("updates-sent", 0) + peer.get("withdrawn-sent", 0),
+                    "input_updates": peer.get("updates-received", 0),
+                    "output_updates": peer.get("updates-sent", 0),
                     "messages_queued_out": 0,
-                    "connection_state": peer["state"],
+                    "connection_state": peer.get("state", ""),
                     "previous_connection_state": "",
                     "last_event": "",
-                    "suppress_4byte_as": not peer["as4-capability"],
+                    "suppress_4byte_as": not peer.get("as4-capability", True),
                     "local_as_prepend": False,
-                    "holdtime": to_seconds(peer["used-hold-time"]),
-                    "configured_holdtime": to_seconds(peer["hold-time"]),
-                    "keepalive": to_seconds(peer["used-keepalive-time"]),
-                    "configured_keepalive": to_seconds(peer.get("keepalive-time", peer["used-keepalive-time"])),
-                    "active_prefix_count": peer["prefix-count"],
-                    "received_prefix_count": peer["prefix-count"],
-                    "accepted_prefix_count": peer["prefix-count"],
+                    "holdtime": to_seconds(peer.get("used-hold-time", peer.get("hold-time", "30s"))),
+                    "configured_holdtime": to_seconds(peer.get("hold-time", "30s")),
+                    "keepalive": to_seconds(peer.get("used-keepalive-time", "10s")),
+                    "configured_keepalive": to_seconds(peer.get("keepalive-time", "10s")),
+                    "active_prefix_count": peer.get("prefix-count", 0),
+                    "received_prefix_count": peer.get("prefix-count", 0),
+                    "accepted_prefix_count": peer.get("prefix-count", 0),
                     "suppressed_prefix_count": 0,
-                    "advertised_prefix_count": sent_prefixes[peer["name"]],
+                    "advertised_prefix_count": sent_prefixes.get(peer["name"], 0),
                     "flap_count": 0,
                 }
                 bgp_neighbors[instance_name][peer["remote-as"]].append(peer_details)

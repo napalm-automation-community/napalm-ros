@@ -58,10 +58,10 @@ class ROSDriver(NetworkDriver):
         for iface in self.api('/interface/print', stats=True):
             result[iface['name']] = defaultdict(int)
             stats = result[iface['name']]
-            stats['tx_errors'] += iface['tx-error']
-            stats['rx_errors'] += iface['rx-error']
-            stats['tx_discards'] += iface['tx-drop']
-            stats['rx_discards'] += iface['rx-drop']
+            stats['tx_errors'] += iface.get('tx-error', 0)
+            stats['rx_errors'] += iface.get('rx-error', 0)
+            stats['tx_discards'] += iface.get('tx-drop', 0)
+            stats['rx_discards'] += iface.get('rx-drop', 0)
             stats['tx_octets'] += iface['tx-byte']
             stats['rx_octets'] += iface['rx-byte']
             stats['tx_unicast_packets'] += iface['tx-packet']

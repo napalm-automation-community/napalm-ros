@@ -1,0 +1,28 @@
+{
+    "data":
+    [
+        {
+            ".id": "*1",
+            "actual-mtu": 1500,
+            "default-name": "ether1",
+            "disabled": false,
+            "fp-rx-byte": 0,
+            "fp-rx-packet": 0,
+            "fp-tx-byte": 0,
+            "fp-tx-packet": 0,
+            "l2mtu": 1592,
+            "link-downs": 0,
+            "mac-address": "D4:CA:6D:26:05:F7",
+            "max-l2mtu": 9578,
+            "mtu": 1500,
+            "name": "ether1poe",
+            "running": false,
+            "rx-byte": 0,
+            "rx-packet": 0,
+            "tx-byte": 0,
+            "tx-packet": 0,
+            "tx-queue-drop": 0,
+            "type": "ether"
+        }
+    ]
+}

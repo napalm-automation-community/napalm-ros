@@ -87,7 +87,7 @@ class ROSDriver(NetworkDriver):
         for inst in self.api("/routing/bgp/instance/print"):
             instance_name = "global" if inst["name"] == "default" else inst["name"]
             bgp_neighbors[instance_name]["router_id"] = inst["router-id"]
-            inst_peers = find(self.api("/routing/bgp/peer/print"), key="instance", value=inst["name"])
+            inst_peers = find_rows(self.api("/routing/bgp/peer/print"), key="instance", value=inst["name"])
             for peer in inst_peers:
                 prefix_stats = {}
                 # Mikrotik prefix counts are not per-AFI so attempt to query
@@ -137,7 +137,7 @@ class ROSDriver(NetworkDriver):
 
         for inst in self.api("/routing/bgp/instance/print"):
             instance_name = "global" if inst["name"] == "default" else inst["name"]
-            inst_peers = find(peers, key="instance", value=inst["name"])
+            inst_peers = find_rows(peers, key="instance", value=inst["name"])
 
             for peer in inst_peers:
                 if neighbor_address and peer["remote-address"] != neighbor_address:
@@ -186,7 +186,7 @@ class ROSDriver(NetworkDriver):
     def get_arp_table(self, vrf=""):
         if vrf:
             vrfs = self.api('/ip/route/vrf/print')
-            vrfs = find(vrfs, key='routing-mark', value=vrf)
+            vrfs = find_rows(vrfs, key='routing-mark', value=vrf)
             interfaces = tuple(flatten_split(vrfs, 'interfaces'))
             arp_table = list(entry for entry in self.arp if entry['interface'] in interfaces)
         else:
@@ -512,8 +512,11 @@ class ROSDriver(NetworkDriver):
         return dict(success=ping_results)
 
 
-def find(haystack, key, value):
-    for row in haystack:
+def find_rows(rows, key, value):
+    """
+    Yield each found row in which key == value.
+    """
+    for row in rows:
         if row.get(key) == value:
             yield row
 

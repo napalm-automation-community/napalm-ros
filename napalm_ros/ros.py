@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from collections import defaultdict
+from itertools import chain
 import socket
 
 # Import third party libs
@@ -186,7 +187,7 @@ class ROSDriver(NetworkDriver):
         if vrf:
             vrfs = self.api('/ip/route/vrf/print')
             vrfs = find(vrfs, key='routing-mark', value=vrf)
-            interfaces = tuple(split_key(vrfs, 'interfaces'))
+            interfaces = tuple(flatten_split(vrfs, 'interfaces'))
             arp_table = list(entry for entry in self.arp if entry['interface'] in interfaces)
         else:
             arp_table = list(self.arp)
@@ -517,7 +518,10 @@ def find(haystack, key, value):
             yield row
 
 
-def split_key(haystack, key):
-    for row in haystack:
-        for item in row[key].split(','):
-            yield item
+def flatten_split(rows, key):
+    """
+    Iterate over given rows and split each foun key by ','
+    Returns unique splitted items.
+    """
+    items = (row[key].split(',') for row in rows)
+    return set(chain.from_iterable(items))

@@ -57,21 +57,20 @@ class ROSDriver(NetworkDriver):
     def get_interfaces_counters(self):
         result = dict()
         for iface in self.api('/interface/print', stats=True):
-            result[iface['name']] = defaultdict(int)
-            stats = result[iface['name']]
-            stats['tx_errors'] += iface.get('tx-error', 0)
-            stats['rx_errors'] += iface.get('rx-error', 0)
-            stats['tx_discards'] += iface.get('tx-drop', 0)
-            stats['rx_discards'] += iface.get('rx-drop', 0)
-            stats['tx_octets'] += iface['tx-byte']
-            stats['rx_octets'] += iface['rx-byte']
-            stats['tx_unicast_packets'] += iface['tx-packet']
-            stats['rx_unicast_packets'] += iface['rx-packet']
-            # Stats below can not be read from /interface submenu
-            stats['tx_multicast_packets'] += 0
-            stats['rx_multicast_packets'] += 0
-            stats['tx_broadcast_packets'] += 0
-            stats['rx_broadcast_packets'] += 0
+            result[iface['name']] = {
+                'tx_errors': iface.get('tx-error', 0),
+                'rx_errors': iface.get('rx-error', 0),
+                'tx_discards': iface.get('tx-drop', 0),
+                'rx_discards': iface.get('rx-drop', 0),
+                'tx_octets': iface['tx-byte'],
+                'rx_octets': iface['rx-byte'],
+                'tx_unicast_packets': iface['tx-packet'],
+                'rx_unicast_packets': iface['rx-packet'],
+                'tx_multicast_packets': 0,
+                'rx_multicast_packets': 0,
+                'tx_broadcast_packets': 0,
+                'rx_broadcast_packets': 0,
+            }
 
         return result
 

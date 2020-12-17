@@ -243,31 +243,28 @@ class ROSDriver(NetworkDriver):
             return instances
         return instances[name]
 
-    def get_lldp_neighbors(self):
-        table = dict()
+    @property
+    def lldp(self):
         for entry in self.api('/ip/neighbor/print'):
             # interface names are the reversed interface e.g. sfp-sfpplus1,bridge will become bridge/sfp-sfpplus1
-            interface_name = '/'.join(entry['interface'].split(',')[::-1])
+            entry['interface'] = '/'.join(entry['interface'].split(',')[::-1])
+            yield entry
 
-            table.setdefault(interface_name, list())
-            table[interface_name].append(dict(
+    def get_lldp_neighbors(self):
+        table = defaultdict(list)
+        for entry in self.lldp:
+            table[entry['interface']].append(dict(
                 hostname=entry['identity'],
                 port=entry['interface-name'],
             ))
         return table
 
     def get_lldp_neighbors_detail(self, interface=""):
-        table = dict()
-        for entry in self.api('/ip/neighbor/print'):
-            # interface names are the reversed interface e.g. sfp-sfpplus1,bridge will become bridge/sfp-sfpplus1
-            interface_name = '/'.join(entry['interface'].split(',')[::-1])
-            # we define the last part of the interface name as parent interface
-            parent_interface = interface_name.split('/')[-1]
-
-            table.setdefault(interface_name, list())
-            table[interface_name].append(
+        table = defaultdict(list)
+        for entry in self.lldp:
+            table[entry['interface']].append(
                 dict(
-                    parent_interface=parent_interface,
+                    parent_interface=entry['interface'].split('/')[-1],
                     remote_chassis_id=entry.get('mac-address', ''),
                     remote_system_name=entry.get('identity', ''),
                     remote_port=entry.get('interface-name', ''),

@@ -238,10 +238,10 @@ class ROSDriver(NetworkDriver):
     def get_network_instances(self, name=""):
         path = self.api.path('/ip/route/vrf')
         keys = ('interfaces', 'routing-mark', 'route-distinguisher')
+        query = path.select(*keys)
         if name:
-            query = path.select(*keys).where(Key('routing-mark') == name)
-            return convert_vrf_table(query)
-        return convert_vrf_table(path)
+            query.where(Key('routing-mark') == name)
+        return convert_vrf_table(query)
 
     def get_lldp_neighbors(self):
         table = defaultdict(list)

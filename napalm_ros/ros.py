@@ -97,7 +97,7 @@ class ROSDriver(NetworkDriver):
                 # the routing table if more than one address family is present on a peer
                 if len(peer["address-families"].split(",")) > 1:
                     for af in peer["address-families"].split(","):
-                        prefix_count = len(self.api.path(f"/{af}/route").select(dst_addr).where(
+                        prefix_count = len(self.api.path(f"/{af}/route").select(Keys.dst_addr).where(
                             Keys.bgp == True, # pylint: disable=singleton-comparison
                             Keys.rcv_from == peer["name"],
                         ))
@@ -170,8 +170,7 @@ class ROSDriver(NetworkDriver):
                 Keys.address,
             ).where(Keys.interface.In(*interfaces))
             return list(convert_arp_table(result))
-        else:
-            return list(convert_arp_table(arp))
+        return list(convert_arp_table(arp))
 
     def get_mac_address_table(self):
         table = list()
@@ -220,7 +219,7 @@ class ROSDriver(NetworkDriver):
         table = defaultdict(list)
         keys = ('identity', 'interface-name', 'interface')
         for entry in self.api.path('/ip/neighbor').select(*keys):
-            iface = LLDPInterfaces.from_api(entry['interface'])
+            iface = LLDPInterfaces.fromApi(entry['interface'])
             table[str(iface)].append(dict(
                 hostname=entry['identity'],
                 port=entry['interface-name'],
@@ -230,7 +229,7 @@ class ROSDriver(NetworkDriver):
     def get_lldp_neighbors_detail(self, interface=""):
         table = defaultdict(list)
         for entry in self.api.path('/ip/neighbor').select(*lldp_neighbors):
-            iface = LLDPInterfaces.from_api(entry['interface'])
+            iface = LLDPInterfaces.fromApi(entry['interface'])
             table[str(iface)].append(
                 dict(
                     parent_interface=iface.parent,
@@ -518,7 +517,7 @@ class LLDPInterfaces:
         self.child = child
 
     @staticmethod
-    def from_api(string):
+    def fromApi(string):
         # interface names are the reversed interface e.g. sfp-sfpplus1,bridge will become bridge/sfp-sfpplus1
         parent, child = string.split(',')[::-1]
         return LLDPInterfaces(parent=parent, child=child)

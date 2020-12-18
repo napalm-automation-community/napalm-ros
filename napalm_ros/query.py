@@ -1,8 +1,10 @@
 from librouteros.query import Key
 
+# pylint: disable=singleton-comparison
 not_disabled = Key('disabled') == False
 
 
+# pylint: disable=too-few-public-methods
 class Keys:
     bgp = Key('bgp')
     dst_addr = Key('dst-address')

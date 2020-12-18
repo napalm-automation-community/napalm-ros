@@ -32,6 +32,7 @@ from napalm_ros.query import (
     bgp_instances,
     bgp_advertisments,
     bgp_peers,
+    lldp_neighbors,
     not_disabled,
     Keys,
 )
@@ -228,16 +229,7 @@ class ROSDriver(NetworkDriver):
 
     def get_lldp_neighbors_detail(self, interface=""):
         table = defaultdict(list)
-        keys = (
-            'identity',
-            'interface-name',
-            'interface',
-            'mac-address',
-            'system-description',
-            'system-caps',
-            'system-caps-enabled',
-        )
-        for entry in self.api.path('/ip/neighbor').select(*keys):
+        for entry in self.api.path('/ip/neighbor').select(*lldp_neighbors):
             iface = LLDPInterfaces.from_api(entry['interface'])
             table[str(iface)].append(
                 dict(

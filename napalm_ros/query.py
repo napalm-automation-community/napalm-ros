@@ -12,6 +12,16 @@ class Keys:
     address = Key('address')
 
 
+lldp_neighbors = (
+    Key('identity'),
+    Key('interface-name'),
+    Key('interface'),
+    Key('mac-address'),
+    Key('system-description'),
+    Key('system-caps'),
+    Key('system-caps-enabled'),
+)
+
 bgp_peers = (
     Key("address-families"),
     Key("as-override"),

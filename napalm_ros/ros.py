@@ -33,17 +33,8 @@ from napalm_ros.query import (
     bgp_advertisments,
     bgp_peers,
     not_disabled,
+    Keys,
 )
-
-
-# pylint: disable=too-few-public-methods,undefined-variable
-class Keys:
-    bgp = Key('bgp')
-    dst_addr = Key('dst-address')
-    rcv_from = Key('received-from')
-    mac_address = Key('max-address')
-    interface = Key('interface')
-    address = Key('address')
 
 
 # pylint: disable=too-many-public-methods

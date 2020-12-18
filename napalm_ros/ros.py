@@ -11,7 +11,10 @@ from librouteros.exceptions import TrapError
 from librouteros.exceptions import FatalError
 from librouteros.exceptions import MultiTrapError
 import librouteros.login
-from librouteros.query import Key
+from librouteros.query import (
+    Key,
+    And,
+)
 from netaddr import IPNetwork
 
 # Import NAPALM base
@@ -25,6 +28,12 @@ from napalm.base.exceptions import ConnectionException
 # Import local modules
 from napalm_ros.utils import to_seconds
 from napalm_ros.utils import iface_addresses
+from napalm_ros.query import (
+    bgp_instances,
+    bgp_advertisments,
+    bgp_peers,
+    not_disabled,
+)
 
 
 # pylint: disable=too-few-public-methods,undefined-variable
@@ -126,64 +135,36 @@ class ROSDriver(NetworkDriver):
         return dict(bgp_neighbors)
 
     def get_bgp_neighbors_detail(self, neighbor_address=""):
-        sent_prefixes = defaultdict(int)
+        peers = self.api.path("/routing/bgp/peer").select(*bgp_peers)
+        if neighbor_address:
+            peers.where(Key('remote-address') == neighbor_address)
+        peers = tuple(peers)
+        peer_names = set(row['name'] for row in peers)
+        peers_instances = set(row['instance'] for row in peers)
+        advertisements = self.api.path("/routing/bgp/advertisements").select(*bgp_advertisments)
+        advertisements.where(Key('peer').In(*peer_names))
+        advertisements = tuple(advertisements)
+        instances = self.api.path('/routing/bgp/instance').select(*bgp_instances)
+        instances.where(And(
+            Key('name').In(*peers_instances),
+            not_disabled,
+        ))
 
-        bgp_neighbors = defaultdict(lambda: defaultdict(list))
-        # Get all configured peers
-        peers = self.api("/routing/bgp/peer/print")
-        # Get all configured advertisements
-        advertisements = self.api("/routing/bgp/advertisements/print")
-        # Count prefixes advertised to each configured peer
+        # Count prefixes advertised to each peer
+        sent_prefixes = defaultdict(int)
         for route in advertisements:
             sent_prefixes[route["peer"]] += 1
 
-        for inst in self.api("/routing/bgp/instance/print"):
+        bgp_neighbors = defaultdict(lambda: defaultdict(list))
+        for inst in instances:
             instance_name = "global" if inst["name"] == "default" else inst["name"]
             inst_peers = find_rows(peers, key="instance", value=inst["name"])
 
             for peer in inst_peers:
-                if neighbor_address and peer["remote-address"] != neighbor_address:
-                    continue
-                peer_details = {
-                    "up": peer.get("established", False),
-                    "local_as": inst["as"],
-                    "remote_as": peer["remote-as"],
-                    "router_id": inst["router-id"],
-                    "local_address": peer.get("local-address", False),
-                    "local_address_configured": bool(peer.get("local-address", False)),
-                    "local_port": 179,
-                    "routing_table": inst["routing-table"],
-                    "remote_address": peer["remote-address"],
-                    "remote_port": 179,
-                    "multihop": peer["multihop"],
-                    "multipath": False,
-                    "remove_private_as": peer["remove-private-as"],
-                    "import_policy": peer["in-filter"],
-                    "export_policy": peer["out-filter"],
-                    "input_messages": peer.get("updates-received", 0) + peer.get("withdrawn-received", 0),
-                    "output_messages": peer.get("updates-sent", 0) + peer.get("withdrawn-sent", 0),
-                    "input_updates": peer.get("updates-received", 0),
-                    "output_updates": peer.get("updates-sent", 0),
-                    "messages_queued_out": 0,
-                    "connection_state": peer.get("state", ""),
-                    "previous_connection_state": "",
-                    "last_event": "",
-                    "suppress_4byte_as": not peer.get("as4-capability", True),
-                    "local_as_prepend": False,
-                    "holdtime": to_seconds(peer.get("used-hold-time", peer.get("hold-time", "30s"))),
-                    "configured_holdtime": to_seconds(peer.get("hold-time", "30s")),
-                    "keepalive": to_seconds(peer.get("used-keepalive-time", "10s")),
-                    "configured_keepalive": to_seconds(peer.get("keepalive-time", "10s")),
-                    "active_prefix_count": peer.get("prefix-count", 0),
-                    "received_prefix_count": peer.get("prefix-count", 0),
-                    "accepted_prefix_count": peer.get("prefix-count", 0),
-                    "suppressed_prefix_count": 0,
-                    "advertised_prefix_count": sent_prefixes.get(peer["name"], 0),
-                    "flap_count": 0,
-                }
+                peer_details = bgp_peer_detail(peer, inst, sent_prefixes)
                 bgp_neighbors[instance_name][peer["remote-as"]].append(peer_details)
 
-        return {k: dict(v) for k, v in bgp_neighbors.items()}
+        return bgp_neighbors
 
     def get_arp_table(self, vrf=""):
         arp = self.api.path('/ip/arp')
@@ -561,3 +542,43 @@ class LLDPInterfaces:
 
     def __str__(self):
         return '/'.join((self.parent, self.child))
+
+
+def bgp_peer_detail(peer, inst, sent_prefixes):
+    return {
+        "up": peer.get("established", False),
+        "local_as": inst["as"],
+        "remote_as": peer["remote-as"],
+        "router_id": inst["router-id"],
+        "local_address": peer.get("local-address", False),
+        "local_address_configured": bool(peer.get("local-address", False)),
+        "local_port": 179,
+        "routing_table": inst["routing-table"],
+        "remote_address": peer["remote-address"],
+        "remote_port": 179,
+        "multihop": peer["multihop"],
+        "multipath": False,
+        "remove_private_as": peer["remove-private-as"],
+        "import_policy": peer["in-filter"],
+        "export_policy": peer["out-filter"],
+        "input_messages": peer.get("updates-received", 0) + peer.get("withdrawn-received", 0),
+        "output_messages": peer.get("updates-sent", 0) + peer.get("withdrawn-sent", 0),
+        "input_updates": peer.get("updates-received", 0),
+        "output_updates": peer.get("updates-sent", 0),
+        "messages_queued_out": 0,
+        "connection_state": peer.get("state", ""),
+        "previous_connection_state": "",
+        "last_event": "",
+        "suppress_4byte_as": not peer.get("as4-capability", True),
+        "local_as_prepend": False,
+        "holdtime": to_seconds(peer.get("used-hold-time", peer.get("hold-time", "30s"))),
+        "configured_holdtime": to_seconds(peer.get("hold-time", "30s")),
+        "keepalive": to_seconds(peer.get("used-keepalive-time", "10s")),
+        "configured_keepalive": to_seconds(peer.get("keepalive-time", "10s")),
+        "active_prefix_count": peer.get("prefix-count", 0),
+        "received_prefix_count": peer.get("prefix-count", 0),
+        "accepted_prefix_count": peer.get("prefix-count", 0),
+        "suppressed_prefix_count": 0,
+        "advertised_prefix_count": sent_prefixes.get(peer["name"], 0),
+        "flap_count": 0,
+    }

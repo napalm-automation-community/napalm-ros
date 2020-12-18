@@ -243,17 +243,12 @@ class ROSDriver(NetworkDriver):
             return convert_vrf_table(query)
         return convert_vrf_table(path)
 
-    @property
-    def lldp(self):
-        for entry in self.api('/ip/neighbor/print'):
-            # interface names are the reversed interface e.g. sfp-sfpplus1,bridge will become bridge/sfp-sfpplus1
-            entry['interface'] = '/'.join(entry['interface'].split(',')[::-1])
-            yield entry
-
     def get_lldp_neighbors(self):
         table = defaultdict(list)
-        for entry in self.lldp:
-            table[entry['interface']].append(dict(
+        keys = ('identity', 'interface-name', 'interface')
+        for entry in self.api.path('/ip/neighbor').select(*keys):
+            iface = LLDPInterfaces.from_api(entry['interface'])
+            table[str(iface)].append(dict(
                 hostname=entry['identity'],
                 port=entry['interface-name'],
             ))
@@ -261,10 +256,20 @@ class ROSDriver(NetworkDriver):
 
     def get_lldp_neighbors_detail(self, interface=""):
         table = defaultdict(list)
-        for entry in self.lldp:
-            table[entry['interface']].append(
+        keys = (
+            'identity',
+            'interface-name',
+            'interface',
+            'mac-address',
+            'system-description',
+            'system-caps',
+            'system-caps-enabled',
+        )
+        for entry in self.api.path('/ip/neighbor').select(*keys):
+            iface = LLDPInterfaces.from_api(entry['interface'])
+            table[str(iface)].append(
                 dict(
-                    parent_interface=entry['interface'].split('/')[-1],
+                    parent_interface=iface.parent,
                     remote_chassis_id=entry.get('mac-address', ''),
                     remote_system_name=entry.get('identity', ''),
                     remote_port=entry.get('interface-name', ''),
@@ -274,6 +279,8 @@ class ROSDriver(NetworkDriver):
                     remote_system_enable_capab=entry.get('system-caps-enabled', '').split(','),
                 )
             )
+        # There is no way of sending query for specific interface since parent and child
+        # interface is embedded within one field on MikroTik
         if not interface:
             return table
         return table[interface]
@@ -538,3 +545,19 @@ def convert_vrf_table(table):
             interfaces=dict(interface=ifaces_dict),
         )
     return instances
+
+
+class LLDPInterfaces:
+
+    def __init__(self, parent, child):
+        self.parent = parent
+        self.child = child
+
+    @staticmethod
+    def from_api(string):
+        # interface names are the reversed interface e.g. sfp-sfpplus1,bridge will become bridge/sfp-sfpplus1
+        parent, child = string.split(',')[::-1]
+        return LLDPInterfaces(parent=parent, child=child)
+
+    def __str__(self):
+        return '/'.join((self.parent, self.child))

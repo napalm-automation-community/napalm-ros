@@ -96,7 +96,11 @@ class FakeApi(BaseTestDouble):
 
     def rawCmd(self, cmd, *words):
         proplist, words = parse_cmd(cmd, *words)
-        yield from eval_cmd(cmd=cmd, words=words, load=self.load)
+        print(cmd, words)
+        if not words:
+            yield from self.load(cmd)
+        else:
+            yield from eval_cmd(cmd=cmd, words=words, load=self.load)
 
     def close(self):
         pass

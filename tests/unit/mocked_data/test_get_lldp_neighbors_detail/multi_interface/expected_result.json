@@ -1,7 +1,7 @@
 {
     "br-lan/ether3": [
         {
-            "parent_interface": "ether3",
+            "parent_interface": "br-lan",
             "remote_chassis_id": "4C:5E:0C:12:AA:CC",
             "remote_system_name":"sw",
             "remote_port": "ether1",

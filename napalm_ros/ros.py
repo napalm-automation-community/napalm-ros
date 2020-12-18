@@ -32,6 +32,9 @@ class Keys:
     bgp = Key('bgp')
     dst_addr = Key('dst-address')
     rcv_from = Key('received-from')
+    mac_address = Key('max-address')
+    interface = Key('interface')
+    address = Key('address')
 
 
 # pylint: disable=too-many-public-methods
@@ -183,15 +186,19 @@ class ROSDriver(NetworkDriver):
         return {k: dict(v) for k, v in bgp_neighbors.items()}
 
     def get_arp_table(self, vrf=""):
+        arp = self.api.path('/ip/arp')
+        vrf_path = self.api.path('/ip/route/vrf')
         if vrf:
-            vrfs = self.api('/ip/route/vrf/print')
-            vrfs = find_rows(vrfs, key='routing-mark', value=vrf)
-            interfaces = tuple(flatten_split(vrfs, 'interfaces'))
-            arp_table = list(entry for entry in self.arp if entry['interface'] in interfaces)
+            vrfs = vrf_path.select(Keys.interface).where(Key('routing-mark') == vrf)
+            interfaces = flatten_split(vrfs, 'interfaces')
+            result = arp.select(
+                Keys.interface,
+                Keys.mac_address,
+                Keys.address,
+            ).where(Keys.interface.In(*interfaces))
+            return list(convert_arp_table(result))
         else:
-            arp_table = list(self.arp)
-
-        return arp_table
+            return list(convert_arp_table(arp))
 
     def get_mac_address_table(self):
         table = list()
@@ -229,19 +236,12 @@ class ROSDriver(NetworkDriver):
         return table
 
     def get_network_instances(self, name=""):
-        instances = dict()
-        for inst in self.api('/ip/route/vrf/print'):
-            ifaces = inst.get('interfaces').split(',')
-            ifaces_dict = dict((iface, dict()) for iface in ifaces)
-            instances[inst['routing-mark']] = dict(
-                name=inst['routing-mark'],
-                type=u'L3VRF',
-                state=dict(route_distinguisher=inst.get('route-distinguisher')),
-                interfaces=dict(interface=ifaces_dict),
-            )
-        if not name:
-            return instances
-        return instances[name]
+        path = self.api.path('/ip/route/vrf')
+        keys = ('interfaces', 'routing-mark', 'route-distinguisher')
+        if name:
+            query = path.select(*keys).where(Key('routing-mark') == name)
+            return convert_vrf_table(query)
+        return convert_vrf_table(path)
 
     @property
     def lldp(self):
@@ -277,19 +277,6 @@ class ROSDriver(NetworkDriver):
         if not interface:
             return table
         return table[interface]
-
-    @property
-    def arp(self):
-        for entry in self.api('/ip/arp/print'):
-            if 'mac-address' not in entry:
-                continue
-
-            yield {
-                'interface': entry['interface'],
-                'mac': cast_mac(entry['mac-address']),
-                'ip': cast_ip(entry['address']),
-                'age': float(-1),
-            }
 
     def get_ipv6_neighbors_table(self):
         ipv6_neighbors_table = []
@@ -524,3 +511,30 @@ def flatten_split(rows, key):
     """
     items = (row[key].split(',') for row in rows)
     return set(chain.from_iterable(items))
+
+
+def convert_arp_table(table):
+    for entry in table:
+        if 'mac-address' not in entry:
+            continue
+
+        yield {
+            'interface': entry['interface'],
+            'mac': cast_mac(entry['mac-address']),
+            'ip': cast_ip(entry['address']),
+            'age': float(-1),
+        }
+
+
+def convert_vrf_table(table):
+    instances = dict()
+    for entry in table:
+        ifaces = entry.get('interfaces').split(',')
+        ifaces_dict = dict((iface, dict()) for iface in ifaces)
+        instances[entry['routing-mark']] = dict(
+            name=entry['routing-mark'],
+            type=u'L3VRF',
+            state=dict(route_distinguisher=entry.get('route-distinguisher')),
+            interfaces=dict(interface=ifaces_dict),
+        )
+    return instances

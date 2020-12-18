@@ -4,7 +4,10 @@
     {
         "interfaces": "ether2",
         "routing-mark": "TEST"
+    },
+    {
+        "interfaces": "ether4",
+        "routing-mark": "TEST2"
     }
     ]
 }
-

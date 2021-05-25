@@ -208,17 +208,22 @@ class ROSDriver(NetworkDriver):
         return table
 
     def get_network_instances(self, name=""):
-        path = self.api.path('/ip/route/vrf')
-        keys = ('interfaces', 'routing-mark', 'route-distinguisher')
-        query = path.select(*keys)
+        query = self.api.path('/ip/route/vrf').select(
+            Keys.interfaces,
+            Keys.route_distinguisher,
+            Keys.routing_mark,
+        )
         if name:
-            query.where(Key('routing-mark') == name)
+            query.where(Keys.routing_mark == name)
         return convert_vrf_table(query)
 
     def get_lldp_neighbors(self):
         table = defaultdict(list)
-        keys = ('identity', 'interface-name', 'interface')
-        for entry in self.api.path('/ip/neighbor').select(*keys):
+        for entry in self.api.path('/ip/neighbor').select(
+            Keys.identity,
+            Keys.interface_name,
+            Keys.interface,
+        ):
             iface = LLDPInterfaces.fromApi(entry['interface'])
             table[str(iface)].append(dict(
                 hostname=entry['identity'],

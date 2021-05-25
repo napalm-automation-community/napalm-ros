@@ -167,8 +167,8 @@ class ROSDriver(NetworkDriver):
             Keys.address,
         )
         if vrf:
-            vrfs = self.api.path('/ip/route/vrf').select(Keys.interface).where(Keys.routing_mark == vrf)
-            interfaces = flatten_split(vrfs, 'interfaces')
+            vrfs = self.api.path('/ip/route/vrf').select(Keys.interfaces).where(Keys.routing_mark == vrf)
+            interfaces = flatten_split(vrfs, Keys.interfaces)
             arp.where(Keys.interface.In(*interfaces))
         return list(convert_arp_table(arp))
 

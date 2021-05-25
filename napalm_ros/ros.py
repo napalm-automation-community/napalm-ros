@@ -41,6 +41,8 @@ from napalm_ros.query import (
 # pylint: disable=too-many-public-methods
 class ROSDriver(NetworkDriver):
 
+    platform = 'ros'
+
     # pylint: disable=super-init-not-called
     def __init__(self, hostname, username, password, timeout=60, optional_args=None):
         self.hostname = hostname
@@ -159,17 +161,15 @@ class ROSDriver(NetworkDriver):
         return bgp_neighbors
 
     def get_arp_table(self, vrf=""):
-        arp = self.api.path('/ip/arp')
-        vrf_path = self.api.path('/ip/route/vrf')
+        arp = self.api.path('/ip/arp').select(
+            Keys.interface,
+            Keys.mac_address,
+            Keys.address,
+        )
         if vrf:
-            vrfs = vrf_path.select(Keys.interface).where(Key('routing-mark') == vrf)
+            vrfs = self.api.path('/ip/route/vrf').select(Keys.interface).where(Keys.routing_mark == vrf)
             interfaces = flatten_split(vrfs, 'interfaces')
-            result = arp.select(
-                Keys.interface,
-                Keys.mac_address,
-                Keys.address,
-            ).where(Keys.interface.In(*interfaces))
-            return list(convert_arp_table(result))
+            arp.where(Keys.interface.In(*interfaces))
         return list(convert_arp_table(arp))
 
     def get_mac_address_table(self):

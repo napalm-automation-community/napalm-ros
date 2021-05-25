@@ -12,6 +12,7 @@ class Keys:
     mac_address = Key('max-address')
     interface = Key('interface')
     address = Key('address')
+    routing_mark = Key('routing-mark')
 
 
 lldp_neighbors = (

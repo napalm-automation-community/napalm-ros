@@ -16,7 +16,8 @@ from librouteros.query import (
     Key,
     And,
 )
-from netaddr import IPNetwork
+from netaddr import IPAddress, IPNetwork
+from netaddr.core import AddrFormatError
 
 # Import NAPALM base
 from napalm.base import NetworkDriver
@@ -52,7 +53,15 @@ class ROSDriver(NetworkDriver):
         self.timeout = timeout
         self.optional_args = optional_args or dict()
         self.secure = self.optional_args.get('secure', False)
-        self.check_hostname = self.optional_args.get('check_hostname', True)
+
+        try:
+            IPAddress(self.hostname)
+            # IPAdresses cannot check hostname
+            self.check_hostname = False
+        except AddrFormatError:
+            # if hostname is not IP, we use check_hostname variable
+            self.check_hostname = self.optional_args.get('check_hostname', True)
+
         self.port = self.optional_args.get('port', 8729 if self.secure else 8728)
         self.api = None
 
@@ -430,10 +439,6 @@ class ROSDriver(NetworkDriver):
             if self.secure:
                 ctx = ssl.create_default_context()
                 ctx.check_hostname = self.check_hostname
-                if not ctx.check_hostname:
-                    # allow all Ciphers, if we do not check hostname
-                    ctx.set_ciphers('ADH:@SECLEVEL=0')
-
                 connect_args['ssl_wrapper'] = ctx.wrap_socket
 
             # use args dict so ssl_wrapper is not set, if we are not using tls

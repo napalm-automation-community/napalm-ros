@@ -50,7 +50,9 @@ class ROSDriver(NetworkDriver):
         self.password = password
         self.timeout = timeout
         self.optional_args = optional_args or dict()
-        self.port = self.optional_args.get('port', 8728)
+        self.secure = self.optional_args.get('secure', False)
+        self.check_hostname = self.optional_args.get('check_hostname', True)
+        self.port = self.optional_args.get('port', 8729 if self.secure else 8728)
         self.api = None
 
     def close(self):
@@ -415,14 +417,26 @@ class ROSDriver(NetworkDriver):
         method = self.optional_args.get('login_method', 'plain')
         method = getattr(librouteros.login, method)
         try:
-            self.api = connect(
-                host=self.hostname,
-                username=self.username,
-                password=self.password,
-                port=self.port,
-                timeout=self.timeout,
-                login_method=method,
-            )
+            connect_args = {
+                'host': self.hostname,
+                'username': self.username,
+                'password': self.password,
+                'port': self.port,
+                'timeout': self.timeout,
+                'login_method': method,
+            }
+
+            if self.secure:
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = self.check_hostname
+                if not ctx.check_hostname:
+                    # allow all Ciphers, if we do not check hostname
+                    ctx.set_ciphers('ADH:@SECLEVEL=0')
+
+                connect_args['ssl_wrapper'] = ctx.wrap_socket
+
+            # use args dict so ssl_wrapper is not set, if we are not using tls
+            self.api = connect(**connect_args)
         except (TrapError, FatalError, socket.timeout, socket.error, MultiTrapError) as exc:
             # pylint: disable=raise-missing-from
             raise ConnectionException("Could not connect to {}:{} - [{!r}]".format(self.hostname, self.port, exc))

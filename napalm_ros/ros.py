@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from collections import defaultdict
 from itertools import chain
 import socket
+import ssl
 
 # Import third party libs
 from librouteros import connect

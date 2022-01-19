@@ -237,7 +237,8 @@ class ROSDriver(NetworkDriver):
             iface = LLDPInterfaces.fromApi(entry['interface'])
             table[str(iface)].append(
                 dict(
-                    parent_interface=iface.parent,
+                    # parent Interface is the Interface name, not the Bridge name
+                    parent_interface=iface.child,
                     remote_chassis_id=entry.get('mac-address', ''),
                     remote_system_name=entry.get('identity', ''),
                     remote_port=entry.get('interface-name', ''),
@@ -524,11 +525,17 @@ class LLDPInterfaces:
     @staticmethod
     def fromApi(string):
         # interface names are the reversed interface e.g. sfp-sfpplus1,bridge will become bridge/sfp-sfpplus1
-        parent, child = string.split(',')[::-1]
-        return LLDPInterfaces(parent=parent, child=child)
+        if ',' in string:
+            parent, child = string.split(',')[::-1]
+            return LLDPInterfaces(parent=parent, child=child)
+        else:
+            return LLDPInterfaces(parent=None, child=string)
 
     def __str__(self):
-        return '/'.join((self.parent, self.child))
+        if self.parent:
+            return '/'.join((self.parent, self.child))
+        else:
+            return self.child
 
 
 def bgp_peer_detail(peer, inst, sent_prefixes):

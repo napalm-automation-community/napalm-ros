@@ -49,7 +49,7 @@ class ROSDriver(NetworkDriver):
         self.username = username
         self.password = password
         self.timeout = timeout
-        self.optional_args = optional_args or dict()
+        self.optional_args = optional_args or {}
         self.port = self.optional_args.get('port', 8728)
         self.api = None
 
@@ -61,7 +61,7 @@ class ROSDriver(NetworkDriver):
         return {'is_alive': True}
 
     def get_interfaces_counters(self):
-        result = dict()
+        result = {}
         for iface in self.api('/interface/print', stats=True):
             result[iface['name']] = {
                 'tx_errors': iface.get('tx-error', 0),
@@ -87,7 +87,8 @@ class ROSDriver(NetworkDriver):
 
         # Count prefixes advertised to each configured peer
         for route in self.api("/routing/bgp/advertisements/print"):
-            sent_prefixes[route["peer"]]["ipv{}".format(IPNetwork(route["prefix"]).version)] += 1
+            ip_version = IPNetwork(route["prefix"]).version
+            sent_prefixes[route["peer"]][f"ipv{ip_version}"] += 1
         # Calculate stats for each routing bgp instance
         for inst in self.api("/routing/bgp/instance/print"):
             instance_name = "global" if inst["name"] == "default" else inst["name"]
@@ -173,7 +174,7 @@ class ROSDriver(NetworkDriver):
         return list(convert_arp_table(arp))
 
     def get_mac_address_table(self):
-        table = list()
+        table = []
         for entry in self.api('/interface/bridge/host/print'):
             table.append(
                 dict(
@@ -313,7 +314,7 @@ class ROSDriver(NetworkDriver):
         try:
             system_resource = tuple(self.api('/system/resource/print'))[0]
         except IndexError:
-            return dict()
+            return {}
 
         total_memory = system_resource.get('total-memory')
         free_memory = system_resource.get('free-memory')
@@ -334,7 +335,7 @@ class ROSDriver(NetworkDriver):
             'vendor': resource['platform'],
             'model': resource['board-name'],
             'hostname': identity['name'],
-            'fqdn': u'',
+            'fqdn': '',
             'os_version': resource['version'],
             'serial_number': routerboard.get('serial-number', ''),
             'interface_list': napalm.base.utils.string_parsers.sorted_nicely(
@@ -352,7 +353,7 @@ class ROSDriver(NetworkDriver):
                 'last_flapped': -1.0,
                 'mtu': entry.get('actual-mtu', 0),
                 'speed': -1,
-                'mac_address': cast_mac(entry['mac-address']) if entry.get('mac-address') else u'',
+                'mac_address': cast_mac(entry['mac-address']) if entry.get('mac-address') else '',
             }
         return interfaces
 
@@ -361,13 +362,13 @@ class ROSDriver(NetworkDriver):
 
         ipv4_addresses = tuple(self.api('/ip/address/print'))
         for ifname in (row['interface'] for row in ipv4_addresses):
-            interfaces_ip.setdefault(ifname, dict())
+            interfaces_ip.setdefault(ifname, {})
             interfaces_ip[ifname]['ipv4'] = iface_addresses(ipv4_addresses, ifname)
 
         try:
             ipv6_addresses = tuple(self.api('/ipv6/address/print'))
             for ifname in (row['interface'] for row in ipv6_addresses):
-                interfaces_ip.setdefault(ifname, dict())
+                interfaces_ip.setdefault(ifname, {})
                 interfaces_ip[ifname]['ipv6'] = iface_addresses(ipv6_addresses, ifname)
         except (TrapError, MultiTrapError):
             pass
@@ -392,8 +393,8 @@ class ROSDriver(NetworkDriver):
         communities = {}
         for row in self.api('/snmp/community/print'):
             communities[row['name']] = {
-                'acl': row.get('addresses', u''),
-                'mode': u'ro' if row.get('read-access') else 'rw',
+                'acl': row.get('addresses', ''),
+                'mode': 'ro' if row.get('read-access') else 'rw',
             }
 
         snmp_values = tuple(self.api('/snmp/print'))[0]
@@ -408,7 +409,7 @@ class ROSDriver(NetworkDriver):
     def get_users(self):
         users = {}
         for row in self.api('/user/print'):
-            users[row['name']] = {'level': 15 if row['group'] == 'full' else 0, 'password': u'', 'sshkeys': list()}
+            users[row['name']] = {'level': 15 if row['group'] == 'full' else 0, 'password': '', 'sshkeys': []}
         return users
 
     def open(self):
@@ -425,7 +426,7 @@ class ROSDriver(NetworkDriver):
             )
         except (TrapError, FatalError, socket.timeout, socket.error, MultiTrapError) as exc:
             # pylint: disable=raise-missing-from
-            raise ConnectionException("Could not connect to {}:{} - [{!r}]".format(self.hostname, self.port, exc))
+            raise ConnectionException(f"Could not connect to {self.hostname}:{self.port} - [{exc!r}]")
 
     # pylint: disable=too-many-arguments
     def ping(
@@ -436,7 +437,8 @@ class ROSDriver(NetworkDriver):
         timeout=C.PING_TIMEOUT,
         size=C.PING_SIZE,
         count=C.PING_COUNT,
-        vrf=C.PING_VRF
+        vrf=C.PING_VRF,
+        source_interface=C.PING_SOURCE_INTERFACE,
     ):
         params = {
             'address': destination,
@@ -502,13 +504,13 @@ def convert_arp_table(table):
 
 
 def convert_vrf_table(table):
-    instances = dict()
+    instances = {}
     for entry in table:
         ifaces = entry.get('interfaces').split(',')
-        ifaces_dict = dict((iface, dict()) for iface in ifaces)
+        ifaces_dict = dict((iface, {}) for iface in ifaces)
         instances[entry['routing-mark']] = dict(
             name=entry['routing-mark'],
-            type=u'L3VRF',
+            type='L3VRF',
             state=dict(route_distinguisher=entry.get('route-distinguisher')),
             interfaces=dict(interface=ifaces_dict),
         )

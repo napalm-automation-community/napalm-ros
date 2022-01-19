@@ -52,17 +52,21 @@ class ROSDriver(NetworkDriver):
         self.password = password
         self.timeout = timeout
         self.optional_args = optional_args or dict()
-        self.secure = self.optional_args.get('secure', False)
 
-        try:
-            IPAddress(self.hostname)
-            # IPAdresses cannot check hostname
-            self.check_hostname = False
-        except AddrFormatError:
-            # if hostname is not IP, we use check_hostname variable
-            self.check_hostname = self.optional_args.get('check_hostname', True)
+        if self.optional_args.get('generate_ssl_wraper', False):
+            ctx = ssl.create_default_context()
+            try:
+                IPAddress(self.hostname)
+                # IPAdresses cannot check hostname
+                ctx.check_hostname = False
+            except AddrFormatError:
+                # if hostname is not IP, we use check_hostname variable
+                ctx.check_hostname = self.optional_args.get('check_hostname', True)
 
-        self.port = self.optional_args.get('port', 8729 if self.secure else 8728)
+            self.optional_args['ssl_wraper'] = ctx.wrap_socket
+
+        self.ssl_wraper = self.optional_args.get('ssl_wraper', librouteros.DEFAULTS['ssl_wraper'])
+        self.port = self.optional_args.get('port', 8729 if 'ssl_wraper' in self.optional_args else 8728)
         self.api = None
 
     def close(self):
@@ -427,22 +431,15 @@ class ROSDriver(NetworkDriver):
         method = self.optional_args.get('login_method', 'plain')
         method = getattr(librouteros.login, method)
         try:
-            connect_args = {
-                'host': self.hostname,
-                'username': self.username,
-                'password': self.password,
-                'port': self.port,
-                'timeout': self.timeout,
-                'login_method': method,
-            }
-
-            if self.secure:
-                ctx = ssl.create_default_context()
-                ctx.check_hostname = self.check_hostname
-                connect_args['ssl_wrapper'] = ctx.wrap_socket
-
-            # use args dict so ssl_wrapper is not set, if we are not using tls
-            self.api = connect(**connect_args)
+            self.api = connect(
+                host=self.hostname,
+                username=self.username,
+                password=self.password,
+                port=self.port,
+                timeout=self.timeout,
+                login_method=method,
+                ssl_wrapper=self.ssl_wraper,
+            )
         except (TrapError, FatalError, socket.timeout, socket.error, MultiTrapError) as exc:
             # pylint: disable=raise-missing-from
             raise ConnectionException("Could not connect to {}:{} - [{!r}]".format(self.hostname, self.port, exc))

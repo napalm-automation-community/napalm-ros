@@ -530,14 +530,14 @@ class LLDPInterfaces:
         if ',' in string:
             parent, child = string.split(',')[::-1]
             return LLDPInterfaces(parent=parent, child=child)
-        else:
-            return LLDPInterfaces(parent=None, child=string)
+
+        return LLDPInterfaces(parent=None, child=string)
 
     def __str__(self):
         if self.parent:
             return '/'.join((self.parent, self.child))
-        else:
-            return self.child
+
+        return self.child
 
 
 def bgp_peer_detail(peer, inst, sent_prefixes):

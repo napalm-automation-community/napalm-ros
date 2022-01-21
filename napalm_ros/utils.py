@@ -22,7 +22,7 @@ def to_seconds(time_format):
         elif current_character == 'w':
             weeks = int(number_buffer)
         else:
-            raise ValueError('Invalid specifier - [{}]'.format(current_character))
+            raise ValueError(f'Invalid specifier - [{current_character}]')
         number_buffer = ''
 
     seconds += (minutes * 60)

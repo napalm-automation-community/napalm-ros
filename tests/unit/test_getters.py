@@ -13,11 +13,13 @@ class TestGetter(BaseTestGetters):
     """Test get_* methods."""
 
 
-def test_LLDPInterfaces_obj_str():
-    obj = LLDPInterfaces(parent='bridge0', child='ether1')
-    assert str(obj) == 'bridge0/ether1'
+def test_LLDPInterfaces_with_parent():
+    ifaces = LLDPInterfaces.fromApi('ether1,bridge0')
+    assert ifaces.parent == 'bridge0'
+    assert ifaces.child == 'ether1'
 
 
-def test_LLDPInterfaces_fromAPI():
-    obj = LLDPInterfaces.fromApi('ether1,bridge0')
-    assert str(obj) == 'bridge0/ether1'
+def test_LLDPInterfaces_without_parent():
+    ifaces = LLDPInterfaces.fromApi('ether1')
+    assert ifaces.parent == ''
+    assert ifaces.child == 'ether1'

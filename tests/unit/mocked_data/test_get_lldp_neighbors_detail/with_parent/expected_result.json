@@ -1,5 +1,5 @@
 {
-    "br-lan/ether3": [
+    "ether3": [
         {
             "parent_interface": "br-lan",
             "remote_chassis_id": "4C:5E:0C:12:AA:CC",

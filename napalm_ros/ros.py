@@ -457,7 +457,7 @@ class ROSDriver(NetworkDriver):
             'probes_sent': max(row['sent'] for row in results),
             'packet_loss': max(row['packet-loss'] for row in results),
             'rtt_min': min(rtt('min-rtt')),
-            'rtt_max': max(rtt('max-rtt')),                                         # Last result has calculated avg
+            'rtt_max': max(rtt('max-rtt')),  # Last result has calculated avg
             'rtt_avg': float(results[-1].get('avg-rtt', '-1ms').replace('ms', '')),
             'rtt_stddev': float(-1),
             'results': []

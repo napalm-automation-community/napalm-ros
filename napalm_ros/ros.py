@@ -225,8 +225,8 @@ class ROSDriver(NetworkDriver):
             Keys.interface_name,
             Keys.interface,
         ):
-            iface = LLDPInterfaces.fromApi(entry['interface'])
-            table[str(iface)].append(dict(
+            ifaces = LLDPInterfaces.fromApi(entry['interface'])
+            table[ifaces.child].append(dict(
                 hostname=entry['identity'],
                 port=entry['interface-name'],
             ))
@@ -235,10 +235,10 @@ class ROSDriver(NetworkDriver):
     def get_lldp_neighbors_detail(self, interface=""):
         table = defaultdict(list)
         for entry in self.api.path('/ip/neighbor').select(*lldp_neighbors):
-            iface = LLDPInterfaces.fromApi(entry['interface'])
-            table[str(iface)].append(
+            ifaces = LLDPInterfaces.fromApi(entry['interface'])
+            table[ifaces.child].append(
                 dict(
-                    parent_interface=iface.parent,
+                    parent_interface=ifaces.parent,
                     remote_chassis_id=entry.get('mac-address', ''),
                     remote_system_name=entry.get('identity', ''),
                     remote_port=entry.get('interface-name', ''),
@@ -526,11 +526,10 @@ class LLDPInterfaces:
     @staticmethod
     def fromApi(string):
         # interface names are the reversed interface e.g. sfp-sfpplus1,bridge will become bridge/sfp-sfpplus1
-        parent, child = string.split(',')[::-1]
-        return LLDPInterfaces(parent=parent, child=child)
-
-    def __str__(self):
-        return '/'.join((self.parent, self.child))
+        if ',' in string:
+            child, parent = string.split(',')
+            return LLDPInterfaces(parent=parent, child=child)
+        return LLDPInterfaces(parent='', child=string)
 
 
 def bgp_peer_detail(peer, inst, sent_prefixes):

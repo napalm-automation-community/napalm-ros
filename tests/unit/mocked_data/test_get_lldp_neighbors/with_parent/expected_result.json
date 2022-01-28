@@ -1,0 +1,8 @@
+{
+    "ether3": [
+        {
+            "hostname":"sw",
+            "port": "ether1"
+        }
+    ]
+}

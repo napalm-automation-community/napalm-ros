@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from collections import defaultdict
 from itertools import chain
 import socket
+import ssl
 
 # Import third party libs
 from librouteros import connect
@@ -15,7 +16,8 @@ from librouteros.query import (
     Key,
     And,
 )
-from netaddr import IPNetwork
+from netaddr import IPAddress, IPNetwork
+from netaddr.core import AddrFormatError
 
 # Import NAPALM base
 from napalm.base import NetworkDriver
@@ -39,6 +41,7 @@ from napalm_ros.query import (
 
 
 # pylint: disable=too-many-public-methods
+# pylint: disable=too-many-instance-attributes
 class ROSDriver(NetworkDriver):
 
     platform = 'ros'
@@ -50,7 +53,21 @@ class ROSDriver(NetworkDriver):
         self.password = password
         self.timeout = timeout
         self.optional_args = optional_args or {}
-        self.port = self.optional_args.get('port', 8728)
+
+        if self.optional_args.get('netbox_default_ssl_params', False):
+            ctx = ssl.create_default_context()
+            try:
+                IPAddress(self.hostname)
+                # IPAdresses cannot check hostname
+                ctx.check_hostname = False
+            except AddrFormatError:
+                # if hostname is not IP, we use check_hostname variable
+                ctx.check_hostname = self.optional_args.get('check_hostname', True)
+
+            self.optional_args['ssl_wrapper'] = ctx.wrap_socket
+
+        self.ssl_wrapper = self.optional_args.get('ssl_wrapper', librouteros.DEFAULTS['ssl_wrapper'])
+        self.port = self.optional_args.get('port', 8729 if 'ssl_wrapper' in self.optional_args else 8728)
         self.api = None
 
     def close(self):
@@ -423,6 +440,7 @@ class ROSDriver(NetworkDriver):
                 port=self.port,
                 timeout=self.timeout,
                 login_method=method,
+                ssl_wrapper=self.ssl_wrapper,
             )
         except (TrapError, FatalError, socket.timeout, socket.error, MultiTrapError) as exc:
             # pylint: disable=raise-missing-from

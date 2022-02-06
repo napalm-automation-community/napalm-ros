@@ -54,7 +54,7 @@ class ROSDriver(NetworkDriver):
         self.timeout = timeout
         self.optional_args = optional_args or {}
 
-        if self.optional_args.get('generate_ssl_wrapper', False):
+        if self.optional_args.get('netbox_default_ssl_params', False):
             ctx = ssl.create_default_context()
             try:
                 IPAddress(self.hostname)

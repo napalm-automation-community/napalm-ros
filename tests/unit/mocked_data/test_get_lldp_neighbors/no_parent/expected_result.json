@@ -1,5 +1,5 @@
 {
-    "br-lan/ether3": [
+    "ether3": [
         {
             "hostname":"sw",
             "port": "ether1"

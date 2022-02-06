@@ -66,7 +66,6 @@ class ROSDriver(NetworkDriver):
 
             self.optional_args['ssl_wrapper'] = ctx.wrap_socket
 
-        print(librouteros)
         self.ssl_wrapper = self.optional_args.get('ssl_wrapper', librouteros.DEFAULTS['ssl_wrapper'])
         self.port = self.optional_args.get('port', 8729 if 'ssl_wrapper' in self.optional_args else 8728)
         self.api = None

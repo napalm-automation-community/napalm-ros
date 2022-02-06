@@ -41,6 +41,7 @@ from napalm_ros.query import (
 
 
 # pylint: disable=too-many-public-methods
+# pylint: disable=too-many-instance-attributes
 class ROSDriver(NetworkDriver):
 
     platform = 'ros'
@@ -53,7 +54,7 @@ class ROSDriver(NetworkDriver):
         self.timeout = timeout
         self.optional_args = optional_args or {}
 
-        if self.optional_args.get('generate_ssl_wraper', False):
+        if self.optional_args.get('generate_ssl_wrapper', False):
             ctx = ssl.create_default_context()
             try:
                 IPAddress(self.hostname)
@@ -63,10 +64,11 @@ class ROSDriver(NetworkDriver):
                 # if hostname is not IP, we use check_hostname variable
                 ctx.check_hostname = self.optional_args.get('check_hostname', True)
 
-            self.optional_args['ssl_wraper'] = ctx.wrap_socket
+            self.optional_args['ssl_wrapper'] = ctx.wrap_socket
 
-        self.ssl_wraper = self.optional_args.get('ssl_wraper', librouteros.DEFAULTS['ssl_wraper'])
-        self.port = self.optional_args.get('port', 8729 if 'ssl_wraper' in self.optional_args else 8728)
+        print(librouteros)
+        self.ssl_wrapper = self.optional_args.get('ssl_wrapper', librouteros.DEFAULTS['ssl_wrapper'])
+        self.port = self.optional_args.get('port', 8729 if 'ssl_wrapper' in self.optional_args else 8728)
         self.api = None
 
     def close(self):
@@ -439,7 +441,7 @@ class ROSDriver(NetworkDriver):
                 port=self.port,
                 timeout=self.timeout,
                 login_method=method,
-                ssl_wrapper=self.ssl_wraper,
+                ssl_wrapper=self.ssl_wrapper,
             )
         except (TrapError, FatalError, socket.timeout, socket.error, MultiTrapError) as exc:
             # pylint: disable=raise-missing-from

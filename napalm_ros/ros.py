@@ -5,7 +5,6 @@ from collections import defaultdict
 from itertools import chain
 import socket
 import ssl
-import paramiko
 
 # Import third party libs
 from librouteros import connect
@@ -346,11 +345,7 @@ class ROSDriver(NetworkDriver):
     def get_facts(self):
         resource = tuple(self.api('/system/resource/print'))[0]
         identity = tuple(self.api('/system/identity/print'))[0]
-        if  resource['board-name'] == 'CHR':
-            serial_number = ''
-        else:
-            routerboard = tuple(self.api('/system/routerboard/print'))[0]
-            serial_number = routerboard.get('serial-number', '')
+        routerboard = tuple(self.api('/system/routerboard/print'))[0]
         interfaces = tuple(self.api('/interface/print'))
         return {
             'uptime': to_seconds(resource['uptime']),
@@ -359,26 +354,11 @@ class ROSDriver(NetworkDriver):
             'hostname': identity['name'],
             'fqdn': '',
             'os_version': resource['version'],
-            'serial_number': serial_number,
+            'serial_number': routerboard.get('serial-number', ''),
             'interface_list': napalm.base.utils.string_parsers.sorted_nicely(
                 tuple(iface['name'] for iface in interfaces),
             ),
         }
-
-    
-    def get_config(self,retrieve='all', full=False, sanitized=False):
-        if retrieve=='candidate' or retrieve=='startup':
-            return { retrieve: ''}
-        command="export terse"
-        if full:
-            command=command + " verbose"
-        if not sanitized:
-            command=command + " show-sensitive"
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(self.hostname, port=22, username=self.username, password=self.password)
-        stdin, stdout, stderr = ssh.exec_command(command)
-        return { 'running': stdout.read().decode(), 'candidate': '', 'startup' : '' }
 
     def get_interfaces(self):
         interfaces = {}

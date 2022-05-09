@@ -362,8 +362,6 @@ class ROSDriver(NetworkDriver):
         }
 
     def get_config(self,retrieve='all', full=False, sanitized=False):
-        if retrieve in ('candidate', 'startup'):
-            return { retrieve: ''}
         command="export terse"
         if full:
             command=command + " verbose"
@@ -372,8 +370,9 @@ class ROSDriver(NetworkDriver):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(self.hostname, port=22, username=self.username, password=self.password)
-        stdin, stdout, stderr = ssh.exec_command(command)
-        return { 'running': stdout.read().decode(), 'candidate': '', 'startup' : '' }
+        _, stdout, _ = ssh.exec_command(command)
+        config = stdout.read().decode()
+        return { 'running': config, 'candidate': config, 'startup' : config }
 
     def get_interfaces(self):
         interfaces = {}

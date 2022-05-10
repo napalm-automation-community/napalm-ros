@@ -346,7 +346,11 @@ class ROSDriver(NetworkDriver):
     def get_facts(self):
         resource = tuple(self.api('/system/resource/print'))[0]
         identity = tuple(self.api('/system/identity/print'))[0]
-        routerboard = tuple(self.api('/system/routerboard/print'))[0]
+        if resource['board-name'] == 'CHR':
+            serial_number = ''
+        else:
+            routerboard = tuple(self.api('/system/routerboard/print'))[0]
+            serial_number = routerboard.get('serial-number', '')
         interfaces = tuple(self.api('/interface/print'))
         return {
             'uptime': to_seconds(resource['uptime']),
@@ -355,7 +359,7 @@ class ROSDriver(NetworkDriver):
             'hostname': identity['name'],
             'fqdn': '',
             'os_version': resource['version'],
-            'serial_number': routerboard.get('serial-number', ''),
+            'serial_number': serial_number,
             'interface_list': napalm.base.utils.string_parsers.sorted_nicely(
                 tuple(iface['name'] for iface in interfaces),
             ),

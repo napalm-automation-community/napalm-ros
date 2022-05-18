@@ -369,7 +369,7 @@ class ROSDriver(NetworkDriver):
                 'description': entry.get('comment', ''),
                 'last_flapped': -1.0,
                 'mtu': entry.get('actual-mtu', 0),
-                'speed': -1,
+                'speed': -1.0,
                 'mac_address': cast_mac(entry['mac-address']) if entry.get('mac-address') else '',
             }
         return interfaces

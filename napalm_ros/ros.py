@@ -361,18 +361,18 @@ class ROSDriver(NetworkDriver):
             ),
         }
 
-    def get_config(self,retrieve='all', full=False, sanitized=False):
-        command="export terse"
+    def get_config(self, retrieve='all', full=False, sanitized=False):
+        command = "export terse"
         if full:
-            command=command + " verbose"
+            command = command + " verbose"
         if not sanitized:
-            command=command + " show-sensitive"
+            command = command + " show-sensitive"
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(self.hostname, port=22, username=self.username, password=self.password)
         _, stdout, _ = ssh.exec_command(command)
         config = stdout.read().decode()
-        return { 'running': config, 'candidate': config, 'startup' : config }
+        return {'running': config, 'candidate': config, 'startup': config}
 
     def get_interfaces(self):
         interfaces = {}

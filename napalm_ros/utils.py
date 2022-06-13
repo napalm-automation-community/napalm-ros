@@ -3,6 +3,10 @@ from napalm.base.helpers import (
 )
 
 
+def rtt(key, iterable):
+    return (float(row.get(key, '-1ms').replace('ms', '')) for row in iterable)
+
+
 def to_seconds(time_format):
     seconds = minutes = hours = days = weeks = 0
 

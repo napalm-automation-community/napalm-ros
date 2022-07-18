@@ -3,7 +3,7 @@
         "is_up": true,
         "is_enabled": true,
         "description": "",
-        "last_flapped": -1,
+        "last_flapped": -1.0,
         "speed": -1,
         "mac_address": "08:00:27:A9:3F:55",
         "mtu": 1500

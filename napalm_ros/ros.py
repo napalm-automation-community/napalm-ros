@@ -29,8 +29,11 @@ from napalm.base.helpers import mac as cast_mac
 from napalm.base.exceptions import ConnectionException
 
 # Import local modules
-from napalm_ros.utils import to_seconds
-from napalm_ros.utils import iface_addresses
+from napalm_ros.utils import (
+    to_seconds,
+    iface_addresses,
+    rtt,
+)
 from napalm_ros.query import (
     bgp_instances,
     bgp_advertisments,
@@ -383,7 +386,7 @@ class ROSDriver(NetworkDriver):
                 'description': entry.get('comment', ''),
                 'last_flapped': -1.0,
                 'mtu': entry.get('actual-mtu', 0),
-                'speed': -1,
+                'speed': -1.0,
                 'mac_address': cast_mac(entry['mac-address']) if entry.get('mac-address') else '',
             }
         return interfaces
@@ -484,12 +487,11 @@ class ROSDriver(NetworkDriver):
             params['routing-table'] = vrf
 
         results = tuple(self.api('/ping', **params))
-        rtt = lambda x: (float(row.get(x, '-1ms').replace('ms', '')) for row in results)
         ping_results = {
             'probes_sent': max(row['sent'] for row in results),
             'packet_loss': max(row['packet-loss'] for row in results),
-            'rtt_min': min(rtt('min-rtt')),
-            'rtt_max': max(rtt('max-rtt')),  # Last result has calculated avg
+            'rtt_min': min(rtt('min-rtt', results)),
+            'rtt_max': max(rtt('max-rtt', results)),  # Last result has calculated avg
             'rtt_avg': float(results[-1].get('avg-rtt', '-1ms').replace('ms', '')),
             'rtt_stddev': float(-1),
             'results': []

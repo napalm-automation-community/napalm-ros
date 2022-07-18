@@ -484,7 +484,7 @@ class ROSDriver(NetworkDriver):
             params['routing-table'] = vrf
 
         results = tuple(self.api('/ping', **params))
-        rtt = lambda x: (float(row.get(x, '-1ms').replace('ms', '')) for row in results)
+        rtt = lambda x: (float(row.get(x, '-1ms').replace('ms', '')) for row in results)  # pylint: disable=unnecessary-lambda-assignment
         ping_results = {
             'probes_sent': max(row['sent'] for row in results),
             'packet_loss': max(row['packet-loss'] for row in results),

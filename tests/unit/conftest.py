@@ -82,6 +82,10 @@ class PatchedROSDevice(ros.ROSDriver):
     def open(self):
         self.api = FakeApi()
 
+    def get_config(self, retrieve='all', full=False, sanitized=False):
+        config = ''
+        return {'running': config, 'candidate': config, 'startup': config}
+
 
 class FakeApi(BaseTestDouble):
 

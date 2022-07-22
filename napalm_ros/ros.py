@@ -5,6 +5,7 @@ from collections import defaultdict
 from itertools import chain
 import socket
 import ssl
+import paramiko
 
 # Import third party libs
 from librouteros import connect
@@ -362,6 +363,19 @@ class ROSDriver(NetworkDriver):
                 tuple(iface['name'] for iface in interfaces),
             ),
         }
+
+    def get_config(self, retrieve='all', full=False, sanitized=False):
+        command = "export terse"
+        if full:
+            command = command + " verbose"
+        if not sanitized:
+            command = command + " show-sensitive"
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(self.hostname, port=22, username=self.username, password=self.password)
+        _, stdout, _ = ssh.exec_command(command)
+        config = stdout.read().decode()
+        return {'running': config, 'candidate': config, 'startup': config}
 
     def get_interfaces(self):
         interfaces = {}

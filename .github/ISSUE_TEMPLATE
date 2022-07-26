@@ -16,6 +16,18 @@
 
 ```
 
+### librouteros version
+(Paste verbatim output from `pip freeze | grep librouteros` between quotes below)
+```
+
+```
+
+### python version
+(paste output of python --version)
+```
+
+```
+
 ### Steps to Reproduce the Issue
 
 ### Error Traceback
@@ -24,4 +36,3 @@
 ```
 
 ```
-

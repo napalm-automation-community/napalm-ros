@@ -6,6 +6,7 @@ from itertools import chain
 import socket
 import ssl
 import paramiko
+import pkg_resources
 
 # Import third party libs
 from librouteros import connect
@@ -351,8 +352,11 @@ class ROSDriver(NetworkDriver):
         identity = tuple(self.api('/system/identity/print'))[0]
         routerboard = tuple(self.api('/system/routerboard/print'))[0]
         interfaces = tuple(self.api('/interface/print'))
+        to_type = float
+        if pkg_resources.get_distribution("napalm").parsed_version.major == 3:
+            to_type = int
         return {
-            'uptime': to_seconds(resource['uptime']),
+            'uptime': to_type(to_seconds(resource['uptime'])),
             'vendor': resource['platform'],
             'model': resource['board-name'],
             'hostname': identity['name'],

@@ -4,13 +4,14 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-
-[packages]
-napalm-ros = {editable = true, path = "."}
 mock = "*"
 pytest = "*"
 yapf = "*"
 pylint = "*"
+
+[packages]
+napalm-ros = {editable = true, path = "."}
+napalm = ">=3.*"
 
 [requires]
 python_version = "3"

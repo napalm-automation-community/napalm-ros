@@ -9,19 +9,25 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version:
-          - 3.6
-          - 3.7
-          - 3.8
+        napalm_version:
+          - "3.*"
+          - "4.*"
+        python_version:
+          - "3.6"
+          - "3.7"
+          - "3.8"
+        exclude:
+          - napalm_version: "4.*"
+            python_version: "3.6"
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python_version }}
         id: setup-python
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.python_version }}
 
       - name: Install pipenv
         run: pip install pipenv
@@ -29,10 +35,13 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ~/.local/share/virtualenvs
-          key: ${{ runner.os }}-python-${{ steps.setup-python.outputs.python-version }}-pipenv-${{ hashFiles('Pipfile') }}
+          key: ${{ runner.os }}-python-${{ matrix.python_version }}-${{ matrix.napalm_version }}-pipenv-${{ hashFiles('Pipfile') }}
 
       - name: Install requirements
-        run: pipenv --python python3 install
+        run: pipenv --python python3 install --dev
+
+      - name: Install napalm
+        run: pipenv install napalm==${{ matrix.napalm_version }}
 
       - name: Lint
         run: pipenv run pylint napalm_ros
@@ -50,7 +59,7 @@ jobs:
         run: pipenv run python setup.py sdist
 
       - name: Publish package
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && matrix.python-version == '3.7'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && matrix.python_version == '3.7'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__

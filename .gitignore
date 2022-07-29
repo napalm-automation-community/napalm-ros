@@ -8,6 +8,7 @@ __pycache__/
 # Distribution / packaging
 *.egg-info/
 *.egg
+build
 
 # Unit test / coverage reports
 .tox/

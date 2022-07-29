@@ -100,7 +100,6 @@ class FakeApi(BaseTestDouble):
 
     def rawCmd(self, cmd, *words):
         proplist, words = parse_cmd(cmd, *words)
-        print(cmd, words)
         if not words:
             yield from self.load(cmd)
         else:

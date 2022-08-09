@@ -376,7 +376,7 @@ class ROSDriver(NetworkDriver):
             command = command + " show-sensitive"
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(self.hostname, port=22, username=self.username, password=self.password)
+        ssh.connect(self.hostname, port=self.optional_args.get('ssh_port', 22), username=self.username, password=self.password)
         _, stdout, _ = ssh.exec_command(command)
         config = stdout.read().decode()
         return {'running': config, 'candidate': config, 'startup': config}

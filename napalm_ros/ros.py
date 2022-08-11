@@ -7,6 +7,7 @@ import socket
 import ssl
 import paramiko
 import pkg_resources
+import re
 
 # Import third party libs
 from librouteros import connect
@@ -392,6 +393,7 @@ class ROSDriver(NetworkDriver):
         ssh.connect(self.hostname, port=self.optional_args.get('ssh_port', 22), username=self.username, password=self.password)
         _, stdout, _ = ssh.exec_command(command)
         config = stdout.read().decode()
+        config = re.sub(r"^# \S+ \S+ by (.+)$", r'# by \1', config, flags=re.MULTILINE) # remove date/time from first line
         return {'running': config, 'candidate': config, 'startup': config}
 
     def get_interfaces(self):

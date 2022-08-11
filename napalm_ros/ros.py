@@ -305,38 +305,10 @@ class ROSDriver(NetworkDriver):
         }
 
         try:
-            system_health = tuple(self.api('/system/health/print'))[0]
-        except IndexError:
-            return environment
-
-        if system_health.get('active-fan', 'none') != 'none':
-            environment['fans'][system_health['active-fan']] = {
-                'status': int(system_health.get('fan-speed', '0RPM').replace('RPM', '')) != 0,
-            }
-
-        if 'temperature' in system_health:
-            environment['temperature']['board'] = {
-                'temperature': float(system_health['temperature']),
-                'is_alert': False,
-                'is_critical': False,
-            }
-
-        if 'cpu-temperature' in system_health:
-            environment['temperature']['cpu'] = {
-                'temperature': float(system_health['cpu-temperature']),
-                'is_alert': False,
-                'is_critical': False,
-            }
-
-        for cpu_values in self.api('/system/resource/cpu/print'):
-            environment['cpu'][cpu_values['cpu']] = {
-                '%usage': float(cpu_values['load']),
-            }
-
-        try:
+            system_health = self.api('/system/health/print')
             system_resource = tuple(self.api('/system/resource/print'))[0]
         except IndexError:
-            return {}
+            return environment
 
         total_memory = system_resource.get('total-memory')
         free_memory = system_resource.get('free-memory')
@@ -344,6 +316,33 @@ class ROSDriver(NetworkDriver):
             'available_ram': total_memory,
             'used_ram': int(total_memory - free_memory),
         }
+
+        for entry in system_health:
+            if 'temperature' in entry['name']:
+                name = entry['name'].replace('-temperature', '')
+                environment['temperature'][name] = {
+                    'temperature': float(entry['value']),
+                    'is_alert': False,
+                    'is_critical': False
+                }
+            elif 'speed' in entry['name']:
+                name = entry['name'].replace('-speed', '')
+                environment['fans'][name] = {
+                    'status': (int(entry['value']) > 50)
+                }
+            elif 'state' in entry['name']:
+                name = entry['name'].replace('-state', '')
+                environment['power'][name] = {
+                    'status': (entry['value'] == 'ok'),
+                    'capacity': None,
+                    'output': None
+                }
+
+        for cpu_values in self.api('/system/resource/cpu/print'):
+            name = system_resource.get('cpu', 'Unknown') + ' ' + cpu_values['cpu']
+            environment['cpu'][name] = {
+                '%usage': float(cpu_values['load']),
+            }
 
         return environment
 

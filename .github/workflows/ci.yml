@@ -48,6 +48,10 @@ jobs:
       - name: Install napalm
         run: pipenv install napalm==${{ matrix.napalm_version }}
 
+      # For some strange reason, pipenv doesn't install this package
+      - name: Install platformdirs
+        run: pipenv run pip install platformdirs
+
       - name: Lint
         run: pipenv run pylint napalm_ros
 

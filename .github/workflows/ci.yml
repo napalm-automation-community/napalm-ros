@@ -43,10 +43,10 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: pipenv install --python ${{ matrix.python_version }} --dev
 
-      - name: Python python-version
+      - name: python --version
         run: pipenv run python --version
 
-      - name: List pip packages
+      - name: pip list
         run: pipenv run pip list
 
       - name: Install napalm

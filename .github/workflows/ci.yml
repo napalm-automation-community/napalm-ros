@@ -59,7 +59,7 @@ jobs:
         run: pipenv run python setup.py sdist
 
       - name: Publish package
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && matrix.python_version == '3.7'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && matrix.python_version == '3.7' && matrix.napalm_version == '4.*'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__

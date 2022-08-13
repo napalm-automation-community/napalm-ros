@@ -35,7 +35,7 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ~/.local/share/virtualenvs
-          key: ${{ runner.os }}-python-${{ matrix.python_version }}-${{ matrix.napalm_version }}-pipenv-${{ hashFiles('Pipfile') }}
+          key: ${{ runner.os }}-python-${{ matrix.python_version }}-${{ matrix.napalm_version }}-pipenv-${{ hashFiles('Pipfile.lock') }}
 
       - name: Install requirements
         run: pipenv --python python3 install --dev

@@ -54,7 +54,7 @@ jobs:
 
       # For some strange reason, pipenv doesn't install this package
       - name: Hack install dependencies
-        run: pipenv run pip install platformdirs typing_extensions
+        run: pipenv run pip install platformdirs typing_extensions importlib-metadata
 
       - name: Lint
         run: pipenv run pylint napalm_ros

@@ -1,5 +1,7 @@
 """Test fixtures."""
 from builtins import super
+from unittest.mock import MagicMock
+from io import BytesIO
 
 import pytest
 from napalm.base.test import conftest as parent_conftest
@@ -77,14 +79,27 @@ class PatchedROSDevice(ros.ROSDriver):
 
     def __init__(self, hostname, username, password, timeout=60, optional_args=None):
         super().__init__(hostname, username, password, timeout, optional_args)
-        self.patched_attrs = ['api']
+        self.patched_attrs = ['api', 'ssh']
 
     def open(self):
         self.api = FakeApi()
+        self.ssh = FakeSSH()
 
-    def get_config(self, retrieve='all', full=False, sanitized=False):
-        config = ''
-        return {'running': config, 'candidate': config, 'startup': config}
+
+class FakeSSH(BaseTestDouble):
+
+    def exec_command(self, command):
+        sanitized_command = self.sanitize_text(command)
+        stdout_path = self.find_file(f'ssh_exec_{sanitized_command}_stdout')
+        stderr_path = self.find_file(f'ssh_exec_{sanitized_command}_stderr')
+        return (
+            BytesIO(),  # stdin
+            BytesIO(initial_bytes=self.read_txt_file(stdout_path).encode()),  #stdout
+            BytesIO(initial_bytes=self.read_txt_file(stderr_path).encode()),  #stderr
+        )
+
+    def connect(self, *args, **kwargs):
+        pass
 
 
 class FakeApi(BaseTestDouble):

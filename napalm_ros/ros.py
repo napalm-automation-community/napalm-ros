@@ -74,6 +74,7 @@ class ROSDriver(NetworkDriver):
         self.ssl_wrapper = self.optional_args.get('ssl_wrapper', librouteros.DEFAULTS['ssl_wrapper'])
         self.port = self.optional_args.get('port', 8729 if 'ssl_wrapper' in self.optional_args else 8728)
         self.api = None
+        self.ssh = None
 
     def close(self):
         self.api.close()
@@ -369,17 +370,18 @@ class ROSDriver(NetworkDriver):
         }
 
     def get_config(self, retrieve='all', full=False, sanitized=False):
+        configs = {'running': '', 'candidate': '', 'startup': ''}
         command = "export terse"
         if full:
             command = command + " verbose"
         if not sanitized:
             command = command + " show-sensitive"
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(self.hostname, port=22, username=self.username, password=self.password)
-        _, stdout, _ = ssh.exec_command(command)
-        config = stdout.read().decode()
-        return {'running': config, 'candidate': config, 'startup': config}
+        self.ssh.connect(self.hostname, port=22, username=self.username, password=self.password)
+        _, stdout, _ = self.ssh.exec_command(command)
+        config = stdout.read().decode().strip()
+        if retrieve in ("running", "all"):
+            configs['running'] = config
+        return configs
 
     def get_interfaces(self):
         interfaces = {}
@@ -451,6 +453,8 @@ class ROSDriver(NetworkDriver):
         return users
 
     def open(self):
+        self.ssh = paramiko.SSHClient()
+        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         method = self.optional_args.get('login_method', 'plain')
         method = getattr(librouteros.login, method)
         try:

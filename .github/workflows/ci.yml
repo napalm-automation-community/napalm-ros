@@ -47,7 +47,7 @@ jobs:
         run: pipenv run pip list
 
       - name: Install napalm
-        run: pipenv install napalm==${{ matrix.napalm_version }}
+        run: pipenv run pip install napalm==${{ matrix.napalm_version }}
 
       # For some strange reason, pipenv doesn't install this package
       - name: Install platformdirs

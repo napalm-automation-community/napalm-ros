@@ -33,11 +33,13 @@ jobs:
         run: pip install pipenv
 
       - uses: actions/cache@v2
+        id: cache
         with:
           path: ~/.local/share/virtualenvs
           key: ${{ runner.os }}-python-${{ matrix.python_version }}-${{ matrix.napalm_version }}-pipenv-${{ hashFiles('Pipfile.lock') }}
 
       - name: Install requirements
+        if: steps.cache.outputs.cache-hit != 'true'
         run: pipenv --python python3 install --dev
 
       - name: Install napalm

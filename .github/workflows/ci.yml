@@ -41,7 +41,7 @@ jobs:
 
       - name: Install requirements
         if: steps.cache.outputs.cache-hit != 'true'
-        run: pipenv --python python${{ matrix.python-version }} install --dev
+        run: pipenv --python ${{ matrix.python-version }} install --dev
 
       - name: List pip packages
         run: pipenv run pip list

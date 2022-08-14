@@ -312,37 +312,25 @@ class ROSDriver(NetworkDriver):
 
         total_memory = system_resource.get('total-memory')
         free_memory = system_resource.get('free-memory')
-        environment['memory'] = {
-            'available_ram': total_memory,
-            'used_ram': int(total_memory - free_memory),
-        }
+        environment['memory'] = {'available_ram': total_memory, 'used_ram': int(total_memory - free_memory)}
 
         for entry in system_health:
             if 'temperature' in entry['name']:
                 name = entry['name'].replace('-temperature', '')
-                environment['temperature'][name] = {
-                    'temperature': float(entry['value']),
-                    'is_alert': False,
-                    'is_critical': False
-                }
+                temperature = float(entry['value'])
+                environment['temperature'][name] = {'temperature': temperature, 'is_alert': False, 'is_critical': False}
             elif 'speed' in entry['name']:
                 name = entry['name'].replace('-speed', '')
-                environment['fans'][name] = {
-                    'status': (int(entry['value']) > 50)
-                }
+                status = (int(entry['value']) > 50)
+                environment['fans'][name] = {'status': status}
             elif 'state' in entry['name']:
                 name = entry['name'].replace('-state', '')
-                environment['power'][name] = {
-                    'status': (entry['value'] == 'ok'),
-                    'capacity': None,
-                    'output': None
-                }
+                status = (entry['value'] == 'ok')
+                environment['power'][name] = {'status': status, 'capacity': 0.0, 'output': 0.0}
 
         for cpu_values in self.api('/system/resource/cpu/print'):
             name = system_resource.get('cpu', 'Unknown') + ' ' + cpu_values['cpu']
-            environment['cpu'][name] = {
-                '%usage': float(cpu_values['load']),
-            }
+            environment['cpu'][name] = {'%usage': float(cpu_values['load'])}
 
         return environment
 

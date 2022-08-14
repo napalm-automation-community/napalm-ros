@@ -2,11 +2,32 @@
     "data":
     [
     {
+        ".id": "*0",
+        "cpu": "cpu0",
         "load": 0,
         "irq": 0,
-        "disk": 0,
-        "cpu": "cpu0",
-        ".id": "*1"
+        "disk": 0
+    },
+    {
+        ".id": "*1",
+        "cpu": "cpu1",
+        "load": 1,
+        "irq": 0,
+        "disk": 0
+    },
+    {
+        ".id": "*2",
+        "cpu": "cpu2",
+        "load": 0,
+        "irq": 0,
+        "disk": 0
+    },
+    {
+        ".id": "*3",
+        "cpu": "cpu3",
+        "load": 1,
+        "irq": 0,
+        "disk": 0
     }
     ]
 }

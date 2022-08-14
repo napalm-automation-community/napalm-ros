@@ -1,14 +1,67 @@
 {
-    "fans": {},
-    "memory": {
-        "available_ram": 262049792,
-        "used_ram": 16691200
-    },
-    "temperature": {},
-    "power": {},
-    "cpu": {
-        "cpu0": {
-            "%usage": 0.0
-        }
-    }
+    "fans": {
+      "fan1": {
+         "status": true
+      },
+      "fan2": {
+         "status": true
+      }
+   },
+   "temperature": {
+      "temperature": {
+         "temperature": 46.0,
+         "is_alert": false,
+         "is_critical": false
+      },
+      "cpu": {
+         "temperature": 58.0,
+         "is_alert": false,
+         "is_critical": false
+      },
+      "sfp": {
+         "temperature": 46.0,
+         "is_alert": false,
+         "is_critical": false
+      },
+      "board1": {
+         "temperature": 45.0,
+         "is_alert": false,
+         "is_critical": false
+      },
+      "board2": {
+         "temperature": 48.0,
+         "is_alert": false,
+         "is_critical": false
+      }
+   },
+   "power": {
+      "psu1": {
+         "status": true,
+         "capacity": 0.0,
+         "output": 0.0
+      },
+      "psu2": {
+         "status": false,
+         "capacity": 0.0,
+         "output": 0.0
+      }
+   },
+   "cpu": {
+      "ARM64 cpu0": {
+         "%usage": 0.0
+      },
+      "ARM64 cpu1": {
+         "%usage": 1.0
+      },
+      "ARM64 cpu2": {
+         "%usage": 0.0
+      },
+      "ARM64 cpu3": {
+         "%usage": 1.0
+      }
+   },
+   "memory": {
+      "available_ram": 4227858432,
+      "used_ram": 277217280
+   }
 }

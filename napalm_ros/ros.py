@@ -60,12 +60,8 @@ class ROSDriver(NetworkDriver):
         self.timeout = timeout
         self.optional_args = optional_args or {}
 
-        self.username = self.optional_args.get('username', username)
-        self.password = self.optional_args.get('password', password)
-
         if self.optional_args.get('netbox_default_ssl_params', False):
-            ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-
+            ctx = ssl.create_default_context()
             try:
                 IPAddress(self.hostname)
                 # IPAdresses cannot check hostname
@@ -73,15 +69,6 @@ class ROSDriver(NetworkDriver):
             except AddrFormatError:
                 # if hostname is not IP, we use check_hostname variable
                 ctx.check_hostname = self.optional_args.get('check_hostname', True)
-
-            if not self.optional_args.get('verify_certificate', True):
-                ctx.check_hostname = False
-                ctx.verify_mode = ssl.CERT_NONE
-                ctx.set_ciphers('ADH:ALL:@SECLEVEL=0')
-
-            elif self.optional_args.get('ca_certificate', False):
-                ctx.verify_mode = ssl.CERT_REQUIRED
-                ctx.load_verify_locations(cadata='-----BEGIN CERTIFICATE-----\n' + self.optional_args.get('ca_certificate') + '\n-----END CERTIFICATE-----')
 
             self.optional_args['ssl_wrapper'] = ctx.wrap_socket
 

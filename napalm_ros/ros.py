@@ -5,9 +5,9 @@ from collections import defaultdict
 from itertools import chain
 import socket
 import ssl
+import re
 import paramiko
 import pkg_resources
-import re
 
 # Import third party libs
 from librouteros import connect
@@ -74,6 +74,7 @@ class ROSDriver(NetworkDriver):
 
         self.ssl_wrapper = self.optional_args.get('ssl_wrapper', librouteros.DEFAULTS['ssl_wrapper'])
         self.port = self.optional_args.get('port', 8729 if 'ssl_wrapper' in self.optional_args else 8728)
+        self.ssh_port = self.optional_args.get('ssh_port', 22)
         self.api = None
 
     def close(self):
@@ -377,10 +378,10 @@ class ROSDriver(NetworkDriver):
             command = command + " show-sensitive"
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(self.hostname, port=self.optional_args.get('ssh_port', 22), username=self.username, password=self.password)
+        ssh.connect(self.hostname, port=self.ssh_port, username=self.username, password=self.password)
         _, stdout, _ = ssh.exec_command(command)
         config = stdout.read().decode()
-        config = re.sub(r"^# \S+ \S+ by (.+)$", r'# by \1', config, flags=re.MULTILINE) # remove date/time from first line
+        config = re.sub(r"^# \S+ \S+ by (.+)$", r'# by \1', config, flags=re.MULTILINE)  # remove date/time in 1st line
         return {'running': config, 'candidate': config, 'startup': config}
 
     def get_interfaces(self):

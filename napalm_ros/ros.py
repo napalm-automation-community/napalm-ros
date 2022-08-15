@@ -305,7 +305,6 @@ class ROSDriver(NetworkDriver):
         }
 
         try:
-            system_health = self.api('/system/health/print')
             system_resource = tuple(self.api('/system/resource/print'))[0]
         except IndexError:
             return environment

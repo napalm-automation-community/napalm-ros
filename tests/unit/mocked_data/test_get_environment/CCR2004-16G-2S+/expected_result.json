@@ -47,16 +47,16 @@
       }
    },
    "cpu": {
-      "ARM64 cpu0": {
+      "cpu0": {
          "%usage": 0.0
       },
-      "ARM64 cpu1": {
+      "cpu1": {
          "%usage": 1.0
       },
-      "ARM64 cpu2": {
+      "cpu2": {
          "%usage": 0.0
       },
-      "ARM64 cpu3": {
+      "cpu3": {
          "%usage": 1.0
       }
    },

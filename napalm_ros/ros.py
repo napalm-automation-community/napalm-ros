@@ -329,7 +329,7 @@ class ROSDriver(NetworkDriver):
                 environment['power'][name] = {'status': status, 'capacity': 0.0, 'output': 0.0}
 
         for cpu_values in self.api('/system/resource/cpu/print'):
-            name = system_resource.get('cpu', 'Unknown') + ' ' + cpu_values['cpu']
+            name = cpu_values['cpu']
             environment['cpu'][name] = {'%usage': float(cpu_values['load'])}
 
         return environment

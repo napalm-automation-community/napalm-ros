@@ -314,7 +314,7 @@ class ROSDriver(NetworkDriver):
         free_memory = system_resource.get('free-memory')
         environment['memory'] = {'available_ram': total_memory, 'used_ram': int(total_memory - free_memory)}
 
-        for entry in system_health:
+        for entry in self.api('/system/health/print'):
             if 'temperature' in entry['name']:
                 name = entry['name'].replace('-temperature', '')
                 temperature = float(entry['value'])

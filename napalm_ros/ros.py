@@ -79,8 +79,12 @@ class ROSDriver(NetworkDriver):
                 ctx.set_ciphers('ADH:ALL:@SECLEVEL=0')
 
             elif self.optional_args.get('ca_certificate', False):
+                ca_certificate = '-----BEGIN CERTIFICATE-----\n' \
+                + self.optional_args.get('ca_certificate') \
+                + '\n-----END CERTIFICATE-----'
+
                 ctx.verify_mode = ssl.CERT_REQUIRED
-                ctx.load_verify_locations(cadata='-----BEGIN CERTIFICATE-----\n' + self.optional_args.get('ca_certificate') + '\n-----END CERTIFICATE-----')
+                ctx.load_verify_locations(cadata=ca_certificate)
 
             self.optional_args['ssl_wrapper'] = ctx.wrap_socket
 

@@ -76,6 +76,7 @@ class ROSDriver(NetworkDriver):
         self.port = self.optional_args.get('port', 8729 if 'ssl_wrapper' in self.optional_args else 8728)
         self.ssh_port = self.optional_args.get('ssh_port', 22)
         self.api = None
+        self.ssh = None
 
     def close(self):
         self.api.close()
@@ -307,45 +308,31 @@ class ROSDriver(NetworkDriver):
         }
 
         try:
-            system_health = tuple(self.api('/system/health/print'))[0]
+            system_resource = tuple(self.api('/system/resource/print'))[0]
         except IndexError:
             return environment
 
-        if system_health.get('active-fan', 'none') != 'none':
-            environment['fans'][system_health['active-fan']] = {
-                'status': int(system_health.get('fan-speed', '0RPM').replace('RPM', '')) != 0,
-            }
-
-        if 'temperature' in system_health:
-            environment['temperature']['board'] = {
-                'temperature': float(system_health['temperature']),
-                'is_alert': False,
-                'is_critical': False,
-            }
-
-        if 'cpu-temperature' in system_health:
-            environment['temperature']['cpu'] = {
-                'temperature': float(system_health['cpu-temperature']),
-                'is_alert': False,
-                'is_critical': False,
-            }
-
-        for cpu_values in self.api('/system/resource/cpu/print'):
-            environment['cpu'][cpu_values['cpu']] = {
-                '%usage': float(cpu_values['load']),
-            }
-
-        try:
-            system_resource = tuple(self.api('/system/resource/print'))[0]
-        except IndexError:
-            return {}
-
         total_memory = system_resource.get('total-memory')
         free_memory = system_resource.get('free-memory')
-        environment['memory'] = {
-            'available_ram': total_memory,
-            'used_ram': int(total_memory - free_memory),
-        }
+        environment['memory'] = {'available_ram': total_memory, 'used_ram': int(total_memory - free_memory)}
+
+        for entry in self.api('/system/health/print'):
+            if 'temperature' in entry['name']:
+                name = entry['name'].replace('-temperature', '')
+                temperature = float(entry['value'])
+                environment['temperature'][name] = {'temperature': temperature, 'is_alert': False, 'is_critical': False}
+            elif 'speed' in entry['name']:
+                name = entry['name'].replace('-speed', '')
+                status = (int(entry['value']) > 50)
+                environment['fans'][name] = {'status': status}
+            elif 'state' in entry['name']:
+                name = entry['name'].replace('-state', '')
+                status = (entry['value'] == 'ok')
+                environment['power'][name] = {'status': status, 'capacity': 0.0, 'output': 0.0}
+
+        for cpu_values in self.api('/system/resource/cpu/print'):
+            name = cpu_values['cpu']
+            environment['cpu'][name] = {'%usage': float(cpu_values['load'])}
 
         return environment
 
@@ -371,18 +358,19 @@ class ROSDriver(NetworkDriver):
         }
 
     def get_config(self, retrieve='all', full=False, sanitized=False):
+        configs = {'running': '', 'candidate': '', 'startup': ''}
         command = "export terse"
         if full:
             command = command + " verbose"
         if not sanitized:
             command = command + " show-sensitive"
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(self.hostname, port=self.ssh_port, username=self.username, password=self.password)
-        _, stdout, _ = ssh.exec_command(command)
-        config = stdout.read().decode()
+        self.ssh.connect(self.hostname, port=self.ssh_port, username=self.username, password=self.password)
+        _, stdout, _ = self.ssh.exec_command(command)
+        config = stdout.read().decode().strip()
         config = re.sub(r"^# \S+ \S+ by (.+)$", r'# by \1', config, flags=re.MULTILINE)  # remove date/time in 1st line
-        return {'running': config, 'candidate': config, 'startup': config}
+        if retrieve in ("running", "all"):
+            configs['running'] = config
+        return configs
 
     def get_interfaces(self):
         interfaces = {}
@@ -454,6 +442,8 @@ class ROSDriver(NetworkDriver):
         return users
 
     def open(self):
+        self.ssh = paramiko.SSHClient()
+        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         method = self.optional_args.get('login_method', 'plain')
         method = getattr(librouteros.login, method)
         try:

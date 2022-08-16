@@ -27,4 +27,3 @@ build
 .DS_Store
 
 *.swp
-Pipfile.lock

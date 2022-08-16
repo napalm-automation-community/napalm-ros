@@ -1,0 +1,59 @@
+{
+    "data":
+    [
+    {
+        ".id": "*E",
+        "name": "temperature",
+        "value": 46,
+        "type": "C"
+    },
+    {
+        ".id": "*11",
+        "name": "cpu-temperature",
+        "value": 58,
+        "type": "C"
+    },
+    {
+        ".id": "*32",
+        "name": "sfp-temperature",
+        "value": 46,
+        "type": "C"
+    },
+    {
+        ".id": "*1B59",
+        "name": "fan1-speed",
+        "value": 6090,
+        "type": "RPM"
+    },
+    {
+        ".id": "*1B5A",
+        "name": "fan2-speed",
+        "value": 6030,
+        "type": "RPM"
+    },
+    {
+        ".id": "*1BBD",
+        "name": "board-temperature1",
+        "value": 45,
+        "type": "C"
+    },
+    {
+        ".id": "*1BBE",
+        "name": "board-temperature2",
+        "value": 48,
+        "type": "C"
+    },
+    {
+        ".id": "*1CE9",
+        "name": "psu1-state",
+        "value": "ok",
+        "type": ""
+    },
+    {
+        ".id": "*1CEA",
+        "name": "psu2-state",
+        "value": "fail",
+        "type": ""
+    }
+    ]
+}

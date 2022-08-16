@@ -1,0 +1,24 @@
+{
+    "data":
+    [
+    {
+        "uptime": "1w4d23h26m9s",
+        "version": "7.4 (stable)",
+        "build-time": "Jul/19/2022 11:25:54",
+        "factory-software": "7.0.4",
+        "free-memory": 3950641152,
+        "total-memory": 4227858432,
+        "cpu": "ARM64",
+        "cpu-count": 4,
+        "cpu-load": 0,
+        "free-hdd-space": 106233856,
+        "total-hdd-space": 135266304,
+        "write-sect-since-reboot": 32923,
+        "write-sect-total": 553343,
+        "bad-blocks": 0,
+        "architecture-name": "arm64",
+        "board-name": "CCR2004-16G-2S+",
+        "platform": "MikroTik"
+    }
+    ]
+}

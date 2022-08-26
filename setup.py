@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="napalm-ros",
-    version="1.1.0",
+    version="1.2.0",
     packages=find_packages(),
     author="Łukasz Kostka",
     author_email="lukasz.kostka@netng.pl",

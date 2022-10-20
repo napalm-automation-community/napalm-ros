@@ -21,25 +21,19 @@ jobs:
             python_version: "3.6"
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Python ${{ matrix.python_version }}
         id: setup-python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python_version }}
+          cache: pipenv
 
       - name: Install pipenv
         run: pip install pipenv
 
-      - uses: actions/cache@v2
-        id: cache
-        with:
-          path: ~/.local/share/virtualenvs
-          key: ${{ runner.os }}-python-${{ matrix.python_version }}-${{ matrix.napalm_version }}-pipenv-${{ hashFiles('Pipfile.lock') }}
-
       - name: Install requirements
-        if: steps.cache.outputs.cache-hit != 'true'
         run: pipenv install --python ${{ matrix.python_version }} --dev
 
       - name: python --version

@@ -253,7 +253,7 @@ class ROSDriver(NetworkDriver):
             ifaces = LLDPInterfaces.fromApi(entry['interface'])
             table[ifaces.child].append(dict(
                 hostname=entry['identity'],
-                port=entry['interface-name'],
+                port=entry.get('interface-name', ''),
             ))
         return table
 

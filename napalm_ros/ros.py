@@ -6,6 +6,7 @@ from itertools import chain
 import socket
 import ssl
 import re
+from packaging.version import parse as version_parse
 import paramiko
 import pkg_resources
 
@@ -59,6 +60,7 @@ class ROSDriver(NetworkDriver):
         self.password = password
         self.timeout = timeout
         self.optional_args = optional_args or {}
+        self.version = None
 
         if self.optional_args.get('netbox_default_ssl_params', False):
             ctx = ssl.create_default_context()
@@ -359,15 +361,20 @@ class ROSDriver(NetworkDriver):
 
     def get_config(self, retrieve='all', full=False, sanitized=False):
         configs = {'running': '', 'candidate': '', 'startup': ''}
-        command = "export terse"
+        command = ["export", "terse"]
+        version = tuple(self.api('/system/package/update/print'))[0]
+        version = version_parse(version['installed-version'])
         if full:
-            command = command + " verbose"
-        if not sanitized:
-            command = command + " show-sensitive"
+            command.append("verbose")
+        if version.major >= 7 and not sanitized:
+            command.append("show-sensitive")
+        if version.major <= 6 and sanitized:
+            command.append("hide-sensitive")
         self.ssh.connect(self.hostname, port=self.ssh_port, username=self.username, password=self.password)
-        _, stdout, _ = self.ssh.exec_command(command)
+        _, stdout, _ = self.ssh.exec_command(" ".join(command))
         config = stdout.read().decode().strip()
-        config = re.sub(r"^# \S+ \S+ by (.+)$", r'# by \1', config, flags=re.MULTILINE)  # remove date/time in 1st line
+        # remove date/time in 1st line
+        config = re.sub(r"^# \S+ \S+ by (.+)$", r'# by \1', config, flags=re.MULTILINE)
         if retrieve in ("running", "all"):
             configs['running'] = config
         return configs

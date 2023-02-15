@@ -1,3 +1,25 @@
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta:__legacy__"
+
+[project]
+name = "napalm-ros"
+version="1.2.2"
+author="Łukasz Kostka"
+author_email="lukasz.kostka@netng.pl"
+description="Network Automation and Programmability Abstraction Layer driver for Mikrotik ROS"
+url="https://github.com/napalm-automation-community/napalm-ros"
+dependencies = [
+  'napalm >= 3.0',
+  'librouteros',
+]
+
+[project.optional-dependencies]
+tests = [
+  'platformdirs',
+  'pytest==7.1.2',
+  'yapf',
+  'pylint>=2.16.2',
+  'isort',
+  'toml',
+]

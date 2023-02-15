@@ -16,6 +16,8 @@ jobs:
         python_version:
           - "3.7"
           - "3.8"
+          - "3.9"
+          - "3.10"
         exclude:
           - napalm_version: "4.*"
             python_version: "3.6"
@@ -28,41 +30,37 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python_version }}
-          cache: pipenv
-
-      - name: Install pipenv
-        run: pip install pipenv
+          cache: pip
 
       - name: Install requirements
-        run: pipenv install --python ${{ matrix.python_version }} --dev
+        run: pip install .
+
+      - name: Install dev requirements
+        run: pip install .[tests]
 
       - name: python --version
-        run: pipenv run python --version
+        run: run python --version
 
       - name: pip list
-        run: pipenv run pip list
+        run: pip list
 
       - name: Install napalm
-        run: pipenv run pip install napalm==${{ matrix.napalm_version }}
-
-      # For some strange reason, pipenv doesn't install this package
-      - name: Hack install dependencies
-        run: pipenv run pip install platformdirs typing_extensions importlib-metadata
+        run: pip install napalm==${{ matrix.napalm_version }}
 
       - name: Lint
-        run: pipenv run pylint napalm_ros
+        run: pylint napalm_ros
 
       - name: Format
         run: >
-          pipenv run yapf -dr
+          yapf -dr
           napalm_ros
           tests
 
       - name: Unit tests
-        run: pipenv run pytest tests
+        run: pytest tests
 
       - name: Package
-        run: pipenv run python setup.py sdist
+        run: python setup.py sdist
 
       - name: Publish package
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && matrix.python_version == '3.7' && matrix.napalm_version == '4.*'

@@ -9,6 +9,7 @@ typing-extensions = "*"
 pytest = "*"
 yapf = "*"
 pylint = "*"
+isort = "*"
 napalm-ros = {editable = true, path = "."}
 
 [packages]

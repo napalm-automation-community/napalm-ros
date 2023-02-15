@@ -33,13 +33,10 @@ jobs:
           cache: pip
 
       - name: Install requirements
-        run: pip install .
+        run: pip install . -r requirements.txt
 
       - name: Install dev requirements
         run: pip install .[tests]
-
-      - name: python --version
-        run: run python --version
 
       - name: pip list
         run: pip list

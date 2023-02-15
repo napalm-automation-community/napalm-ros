@@ -5,14 +5,16 @@ build-backend = "setuptools.build_meta:__legacy__"
 [project]
 name = "napalm-ros"
 version="1.2.2"
-author="Łukasz Kostka"
-author_email="lukasz.kostka@netng.pl"
 description="Network Automation and Programmability Abstraction Layer driver for Mikrotik ROS"
-url="https://github.com/napalm-automation-community/napalm-ros"
-dependencies = [
-  'napalm >= 3.0',
-  'librouteros',
+readme = "README.md"
+requires-python = ">=3.7"
+authors = [
+  { name="Łukasz Kostka", email="lukasz.g.kostka@gmail.com" },
 ]
+
+[project.urls]
+"Homepage" = "https://github.com/napalm-automation-community/napalm-ros"
+"Bug Tracker" = "https://github.com/napalm-automation-community/napalm-ros/issues"
 
 [project.optional-dependencies]
 tests = [

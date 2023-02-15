@@ -325,11 +325,11 @@ class ROSDriver(NetworkDriver):
                 environment['temperature'][name] = {'temperature': temperature, 'is_alert': False, 'is_critical': False}
             elif 'speed' in entry['name']:
                 name = entry['name'].replace('-speed', '')
-                status = (int(entry['value']) > 50)
+                status = int(entry['value']) > 50
                 environment['fans'][name] = {'status': status}
             elif 'state' in entry['name']:
                 name = entry['name'].replace('-state', '')
-                status = (entry['value'] == 'ok')
+                status = entry['value'] == 'ok'
                 environment['power'][name] = {'status': status, 'capacity': 0.0, 'output': 0.0}
 
         for cpu_values in self.api('/system/resource/cpu/print'):

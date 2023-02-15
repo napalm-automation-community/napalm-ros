@@ -10,6 +10,7 @@ pytest = "*"
 yapf = "*"
 pylint = "*"
 isort = "*"
+toml = "*"
 napalm-ros = {editable = true, path = "."}
 
 [packages]

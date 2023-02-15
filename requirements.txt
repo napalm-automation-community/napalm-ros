@@ -1,3 +1,2 @@
 napalm>=3.0
 librouteros
-pkg_resources

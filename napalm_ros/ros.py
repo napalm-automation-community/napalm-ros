@@ -60,7 +60,6 @@ class ROSDriver(NetworkDriver):
         self.password = password
         self.timeout = timeout
         self.optional_args = optional_args or {}
-        self.version = None
 
         if self.optional_args.get('netbox_default_ssl_params', False):
             ctx = ssl.create_default_context()
@@ -318,19 +317,11 @@ class ROSDriver(NetworkDriver):
         free_memory = system_resource.get('free-memory')
         environment['memory'] = {'available_ram': total_memory, 'used_ram': int(total_memory - free_memory)}
 
-        for entry in self.api('/system/health/print'):
-            if 'temperature' in entry['name']:
-                name = entry['name'].replace('-temperature', '')
-                temperature = float(entry['value'])
-                environment['temperature'][name] = {'temperature': temperature, 'is_alert': False, 'is_critical': False}
-            elif 'speed' in entry['name']:
-                name = entry['name'].replace('-speed', '')
-                status = (int(entry['value']) > 50)
-                environment['fans'][name] = {'status': status}
-            elif 'state' in entry['name']:
-                name = entry['name'].replace('-state', '')
-                status = (entry['value'] == 'ok')
-                environment['power'][name] = {'status': status, 'capacity': 0.0, 'output': 0.0}
+        health = tuple(self.api('/system/health/print'))
+        if self._get_version().major < 7:
+            sys_health_pre_7(health, environment)
+        else:
+            sys_health_7(health, environment)
 
         for cpu_values in self.api('/system/resource/cpu/print'):
             name = cpu_values['cpu']
@@ -359,11 +350,14 @@ class ROSDriver(NetworkDriver):
             ),
         }
 
+    def _get_version(self):
+        version = tuple(self.api('/system/package/update/print'))[0]
+        return version_parse(version['installed-version'])
+
     def get_config(self, retrieve='all', full=False, sanitized=False):
         configs = {'running': '', 'candidate': '', 'startup': ''}
         command = ["export", "terse"]
-        version = tuple(self.api('/system/package/update/print'))[0]
-        version = version_parse(version['installed-version'])
+        version = self._get_version()
         if full:
             command.append("verbose")
         if version.major >= 7 and not sanitized:
@@ -608,3 +602,29 @@ def bgp_peer_detail(peer, inst, sent_prefixes):
         "advertised_prefix_count": sent_prefixes.get(peer["name"], 0),
         "flap_count": 0,
     }
+
+
+def sys_health_7(entries, environment):
+    for entry in entries:
+        if 'temperature' in entry['name']:
+            name = entry['name'].replace('-temperature', '')
+            temperature = float(entry['value'])
+            environment['temperature'][name] = {'temperature': temperature, 'is_alert': False, 'is_critical': False}
+        elif 'speed' in entry['name']:
+            name = entry['name'].replace('-speed', '')
+            status = (int(entry['value']) > 50)
+            environment['fans'][name] = {'status': status}
+        elif 'state' in entry['name']:
+            name = entry['name'].replace('-state', '')
+            status = (entry['value'] == 'ok')
+            environment['power'][name] = {'status': status, 'capacity': 0.0, 'output': 0.0}
+
+
+def sys_health_pre_7(entries, environment):
+    """Versions <7 provide single entry with keys and values."""
+    for key, value in entries[0].items():
+        if 'temperature' in key:
+            temperature = float(value.replace('C', ''))
+            environment['temperature'][key] = {'temperature': temperature, 'is_alert': False, 'is_critical': False}
+        if 'speed' in key:
+            environment['fans'][key] = {'status': int(value)}

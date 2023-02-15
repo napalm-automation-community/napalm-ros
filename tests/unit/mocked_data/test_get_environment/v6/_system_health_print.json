@@ -1,0 +1,10 @@
+{
+    "data":
+    [
+        {
+            "voltage": "24.3V",
+            "temperature": "46C",
+            "cpu-temperature": "76C"
+        }
+    ]
+}

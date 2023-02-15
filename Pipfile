@@ -12,8 +12,8 @@ pylint = "*"
 napalm-ros = {editable = true, path = "."}
 
 [packages]
-napalm-ros = {editable = true, path = "."}
 napalm = ">=3.*"
+napalm-ros = {editable = true, path = "."}
 
 [requires]
 python_version = "3"

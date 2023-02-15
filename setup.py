@@ -26,8 +26,8 @@ setup(
     ],
     url="https://github.com/napalm-automation-community/napalm-ros",
     include_package_data=True,
-    install_requires=(
-        'napalm>=3.*',
+    install_requires=[
+        'napalm>=3.2',
         'librouteros==3.*',
-    ),
+    ],
 )

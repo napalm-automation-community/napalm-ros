@@ -1,3 +1,40 @@
 [build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta:__legacy__"
+requires = ["setuptools>=56.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "napalm-ros"
+version="1.2.3"
+description="Network Automation and Programmability Abstraction Layer driver for Mikrotik ROS"
+readme = "README.md"
+requires-python = ">=3.7"
+authors = [
+  { name="Łukasz Kostka", email="lukasz.g.kostka@gmail.com" },
+]
+
+[project.urls]
+"Homepage" = "https://github.com/napalm-automation-community/napalm-ros"
+"Bug Tracker" = "https://github.com/napalm-automation-community/napalm-ros/issues"
+
+[project.optional-dependencies]
+tests = [
+  'platformdirs',
+  'pytest==7.1.2',
+  'yapf',
+  'pylint>=2.16.2',
+  'isort',
+  'toml',
+]
+
+[tool.yapf]
+based_on_style = "pep8"
+split_before_logical_operator = true
+align_closing_bracket_with_visual_indent = true
+blank_line_before_nested_class_or_def = true
+blank_lines_around_top_level_definition = 2
+column_limit = 140
+dedent_closing_brackets = true
+coalesce_brackets = false
+each_dict_entry_on_separate_line = true
+indent_dictionary_value = false
+split_arguments_when_comma_terminated = true

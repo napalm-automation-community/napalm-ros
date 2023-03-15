@@ -28,6 +28,6 @@ setup(
     include_package_data=True,
     install_requires=[
         'napalm>=3.2',
-        'librouteros==3.*',
+        'librouteros==3.0',
     ],
 )

@@ -624,7 +624,10 @@ def sys_health_pre_7(entries, environment):
     """Versions <7 provide single entry with keys and values."""
     for key, value in entries[0].items():
         if 'temperature' in key:
-            temperature = float(value.replace('C', ''))
+            if 'C' in value:
+                temperature = float(value.replace('C', ''))
+            else:
+                temperature = float(value)
             environment['temperature'][key] = {'temperature': temperature, 'is_alert': False, 'is_critical': False}
         if 'speed' in key:
             environment['fans'][key] = {'status': int(value)}

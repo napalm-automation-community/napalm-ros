@@ -5,7 +5,10 @@ from collections import defaultdict
 from itertools import chain
 import socket
 import ssl
+import re
+from packaging.version import parse as version_parse
 import paramiko
+import pkg_resources
 
 # Import third party libs
 from librouteros import connect
@@ -29,8 +32,11 @@ from napalm.base.helpers import mac as cast_mac
 from napalm.base.exceptions import ConnectionException
 
 # Import local modules
-from napalm_ros.utils import to_seconds
-from napalm_ros.utils import iface_addresses
+from napalm_ros.utils import (
+    to_seconds,
+    iface_addresses,
+    rtt,
+)
 from napalm_ros.query import (
     bgp_instances,
     bgp_advertisments,
@@ -54,6 +60,7 @@ class ROSDriver(NetworkDriver):
         self.password = password
         self.timeout = timeout
         self.optional_args = optional_args or {}
+        self.version = None
 
         if self.optional_args.get('netbox_default_ssl_params', False):
             ctx = ssl.create_default_context()
@@ -69,7 +76,9 @@ class ROSDriver(NetworkDriver):
 
         self.ssl_wrapper = self.optional_args.get('ssl_wrapper', librouteros.DEFAULTS['ssl_wrapper'])
         self.port = self.optional_args.get('port', 8729 if 'ssl_wrapper' in self.optional_args else 8728)
+        self.ssh_port = self.optional_args.get('ssh_port', 22)
         self.api = None
+        self.ssh = None
 
     def close(self):
         self.api.close()
@@ -246,7 +255,7 @@ class ROSDriver(NetworkDriver):
             ifaces = LLDPInterfaces.fromApi(entry['interface'])
             table[ifaces.child].append(dict(
                 hostname=entry['identity'],
-                port=entry['interface-name'],
+                port=entry.get('interface-name', ''),
             ))
         return table
 
@@ -301,45 +310,31 @@ class ROSDriver(NetworkDriver):
         }
 
         try:
-            system_health = tuple(self.api('/system/health/print'))[0]
+            system_resource = tuple(self.api('/system/resource/print'))[0]
         except IndexError:
             return environment
 
-        if system_health.get('active-fan', 'none') != 'none':
-            environment['fans'][system_health['active-fan']] = {
-                'status': int(system_health.get('fan-speed', '0RPM').replace('RPM', '')) != 0,
-            }
-
-        if 'temperature' in system_health:
-            environment['temperature']['board'] = {
-                'temperature': float(system_health['temperature']),
-                'is_alert': False,
-                'is_critical': False,
-            }
-
-        if 'cpu-temperature' in system_health:
-            environment['temperature']['cpu'] = {
-                'temperature': float(system_health['cpu-temperature']),
-                'is_alert': False,
-                'is_critical': False,
-            }
-
-        for cpu_values in self.api('/system/resource/cpu/print'):
-            environment['cpu'][cpu_values['cpu']] = {
-                '%usage': float(cpu_values['load']),
-            }
-
-        try:
-            system_resource = tuple(self.api('/system/resource/print'))[0]
-        except IndexError:
-            return {}
-
         total_memory = system_resource.get('total-memory')
         free_memory = system_resource.get('free-memory')
-        environment['memory'] = {
-            'available_ram': total_memory,
-            'used_ram': int(total_memory - free_memory),
-        }
+        environment['memory'] = {'available_ram': total_memory, 'used_ram': int(total_memory - free_memory)}
+
+        for entry in self.api('/system/health/print'):
+            if 'temperature' in entry['name']:
+                name = entry['name'].replace('-temperature', '')
+                temperature = float(entry['value'])
+                environment['temperature'][name] = {'temperature': temperature, 'is_alert': False, 'is_critical': False}
+            elif 'speed' in entry['name']:
+                name = entry['name'].replace('-speed', '')
+                status = int(entry['value']) > 50
+                environment['fans'][name] = {'status': status}
+            elif 'state' in entry['name']:
+                name = entry['name'].replace('-state', '')
+                status = entry['value'] == 'ok'
+                environment['power'][name] = {'status': status, 'capacity': 0.0, 'output': 0.0}
+
+        for cpu_values in self.api('/system/resource/cpu/print'):
+            name = cpu_values['cpu']
+            environment['cpu'][name] = {'%usage': float(cpu_values['load'])}
 
         return environment
 
@@ -352,8 +347,11 @@ class ROSDriver(NetworkDriver):
             routerboard = tuple(self.api('/system/routerboard/print'))[0]
             serial_number = routerboard.get('serial-number', '')
         interfaces = tuple(self.api('/interface/print'))
+        to_type = float
+        if pkg_resources.get_distribution("napalm").parsed_version.major == 3:
+            to_type = int
         return {
-            'uptime': to_seconds(resource['uptime']),
+            'uptime': to_type(to_seconds(resource['uptime'])),
             'vendor': resource['platform'],
             'model': resource['board-name'],
             'hostname': identity['name'],
@@ -365,18 +363,25 @@ class ROSDriver(NetworkDriver):
             ),
         }
 
-    def get_config(self,retrieve='all', full=False, sanitized=False):
-        command="export terse"
+    def get_config(self, retrieve='all', full=False, sanitized=False):
+        configs = {'running': '', 'candidate': '', 'startup': ''}
+        command = ["export", "terse"]
+        version = tuple(self.api('/system/package/update/print'))[0]
+        version = version_parse(version['installed-version'])
         if full:
-            command=command + " verbose"
-        if not sanitized:
-            command=command + " show-sensitive"
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(self.hostname, port=22, username=self.username, password=self.password)
-        _, stdout, _ = ssh.exec_command(command)
-        config = stdout.read().decode()
-        return { 'running': config, 'candidate': config, 'startup' : config }
+            command.append("verbose")
+        if version.major >= 7 and not sanitized:
+            command.append("show-sensitive")
+        if version.major <= 6 and sanitized:
+            command.append("hide-sensitive")
+        self.ssh.connect(self.hostname, port=self.ssh_port, username=self.username, password=self.password)
+        _, stdout, _ = self.ssh.exec_command(" ".join(command))
+        config = stdout.read().decode().strip()
+        # remove date/time in 1st line
+        config = re.sub(r"^# \S+ \S+ by (.+)$", r'# by \1', config, flags=re.MULTILINE)
+        if retrieve in ("running", "all"):
+            configs['running'] = config
+        return configs
 
     def get_interfaces(self):
         interfaces = {}
@@ -448,6 +453,8 @@ class ROSDriver(NetworkDriver):
         return users
 
     def open(self):
+        self.ssh = paramiko.SSHClient()
+        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         method = self.optional_args.get('login_method', 'plain')
         method = getattr(librouteros.login, method)
         try:
@@ -488,12 +495,11 @@ class ROSDriver(NetworkDriver):
             params['routing-table'] = vrf
 
         results = tuple(self.api('/ping', **params))
-        rtt = lambda x: (float(row.get(x, '-1ms').replace('ms', '')) for row in results)
         ping_results = {
             'probes_sent': max(row['sent'] for row in results),
             'packet_loss': max(row['packet-loss'] for row in results),
-            'rtt_min': min(rtt('min-rtt')),
-            'rtt_max': max(rtt('max-rtt')),  # Last result has calculated avg
+            'rtt_min': min(rtt('min-rtt', results)),
+            'rtt_max': max(rtt('max-rtt', results)),  # Last result has calculated avg
             'rtt_avg': float(results[-1].get('avg-rtt', '-1ms').replace('ms', '')),
             'rtt_stddev': float(-1),
             'results': []

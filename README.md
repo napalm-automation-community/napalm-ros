@@ -39,3 +39,4 @@ order matter.
 * get_mac_address_table
 * get_bgp_neighbors
 * get_bgp_neighbors_detail
+* get_config

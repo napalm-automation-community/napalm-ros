@@ -8,49 +8,63 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version:
-          - 3.6
-          - 3.7
-          - 3.8
+        napalm_version:
+          - "3.*"
+          - "4.*"
+        python_version:
+          - "3.7"
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+        exclude:
+          - napalm_version: "4.*"
+            python_version: "3.6"
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python_version }}
         id: setup-python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.python_version }}
+          cache: pip
 
-      - name: Install pipenv
-        run: pip install pipenv
-
-      - uses: actions/cache@v2
-        with:
-          path: ~/.local/share/virtualenvs
-          key: ${{ runner.os }}-python-${{ steps.setup-python.outputs.python-version }}-pipenv-${{ hashFiles('Pipfile') }}
+      - name: Update core/base packages
+        run: pip install -U pip setuptools wheel build
 
       - name: Install requirements
-        run: pipenv --python python3 install
+        run: pip install . -r requirements.txt
+
+      - name: Install dev requirements
+        run: pip install .[tests]
+
+      - name: pip list
+        run: pip list
+
+      - name: Install napalm
+        run: pip install napalm==${{ matrix.napalm_version }}
 
       - name: Lint
-        run: pipenv run pylint napalm_ros
+        run: pylint napalm_ros
 
       - name: Format
         run: >
-          pipenv run yapf -dr
+          yapf -dr
           napalm_ros
           tests
 
       - name: Unit tests
-        run: pipenv run pytest tests
+        run: pytest tests
 
       - name: Package
-        run: pipenv run python setup.py sdist
+        run: python3 -m build
 
       - name: Publish package
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && matrix.python-version == '3.7'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && matrix.python_version == '3.7' && matrix.napalm_version == '4.*'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__

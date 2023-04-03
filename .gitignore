@@ -8,6 +8,7 @@ __pycache__/
 # Distribution / packaging
 *.egg-info/
 *.egg
+build
 
 # Unit test / coverage reports
 .tox/
@@ -26,4 +27,3 @@ __pycache__/
 .DS_Store
 
 *.swp
-Pipfile.lock

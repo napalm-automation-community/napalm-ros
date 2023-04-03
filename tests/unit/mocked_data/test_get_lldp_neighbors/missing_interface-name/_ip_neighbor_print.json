@@ -1,0 +1,19 @@
+{
+    "data": [
+        {
+            ".id": "*1F",
+            "interface": "ether3,br-lan",
+            "address": "172.31.1.12",
+            "address4": "172.31.1.12",
+            "mac-address": "4C:5E:0C:12:AA:CC",
+            "identity": "Lync Phone Edition - 9e479",
+            "platform": "",
+            "version": "",
+            "unpack": "none",
+            "age": "49s",
+            "system-description": "Lync Phone Edition - POLYCOM_CX600_Rev-5",
+            "system-caps": "telephone",
+            "system-caps-enabled": "telephone"
+        }
+    ]
+}

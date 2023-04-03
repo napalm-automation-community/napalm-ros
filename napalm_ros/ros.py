@@ -370,7 +370,8 @@ class ROSDriver(NetworkDriver):
             command.append("show-sensitive")
         if version.major <= 6 and sanitized:
             command.append("hide-sensitive")
-        self.ssh.connect(self.hostname, port=self.ssh_port, username=self.username, password=self.password, look_for_keys=False)
+        self.ssh.connect(self.hostname, port=self.ssh_port, 
+                         username=self.username, password=self.password, look_for_keys=False)
         _, stdout, _ = self.ssh.exec_command(" ".join(command))
         config = stdout.read().decode().strip()
         # remove date/time in 1st line

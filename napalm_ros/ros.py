@@ -54,7 +54,7 @@ class ROSDriver(NetworkDriver):
     platform = 'ros'
 
     # pylint: disable=super-init-not-called
-    def __init__(self, hostname, username, password, timeout=60, optional_args=None):
+    def __init__(self, hostname, username, password, timeout=60, optional_args=None, look_for_keys=False):
         self.hostname = hostname
         self.username = username
         self.password = password

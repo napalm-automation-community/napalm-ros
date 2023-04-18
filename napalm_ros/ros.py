@@ -372,10 +372,10 @@ class ROSDriver(NetworkDriver):
         if version.major <= 6 and sanitized:
             command.append("hide-sensitive")
         self.ssh.connect(
-            self.hostname, 
-            port=self.ssh_port, 
-            username=self.username, 
-            password=self.password, 
+            self.hostname,
+            port=self.ssh_port,
+            username=self.username,
+            password=self.password,
             look_for_keys=self.paramiko_look_for_keys
         )
         _, stdout, _ = self.ssh.exec_command(" ".join(command))

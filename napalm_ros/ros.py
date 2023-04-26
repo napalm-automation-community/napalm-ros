@@ -376,7 +376,7 @@ class ROSDriver(NetworkDriver):
             port=self.ssh_port,
             username=self.username,
             password=self.password,
-            look_for_keys=self.paramiko_look_for_keys
+            look_for_keys=self.paramiko_look_for_keys,
         )
         _, stdout, _ = self.ssh.exec_command(" ".join(command))
         config = stdout.read().decode().strip()

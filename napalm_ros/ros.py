@@ -77,6 +77,7 @@ class ROSDriver(NetworkDriver):
         self.ssl_wrapper = self.optional_args.get('ssl_wrapper', librouteros.DEFAULTS['ssl_wrapper'])
         self.port = self.optional_args.get('port', 8729 if 'ssl_wrapper' in self.optional_args else 8728)
         self.ssh_port = self.optional_args.get('ssh_port', 22)
+        self.paramiko_look_for_keys = self.optional_args.get('paramiko_look_for_keys', False)
         self.api = None
         self.ssh = None
 
@@ -370,7 +371,13 @@ class ROSDriver(NetworkDriver):
             command.append("show-sensitive")
         if version.major <= 6 and sanitized:
             command.append("hide-sensitive")
-        self.ssh.connect(self.hostname, port=self.ssh_port, username=self.username, password=self.password)
+        self.ssh.connect(
+            self.hostname,
+            port=self.ssh_port,
+            username=self.username,
+            password=self.password,
+            look_for_keys=self.paramiko_look_for_keys,
+        )
         _, stdout, _ = self.ssh.exec_command(" ".join(command))
         config = stdout.read().decode().strip()
         # remove date/time in 1st line

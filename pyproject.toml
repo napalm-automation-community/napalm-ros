@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "napalm-ros"
-version="1.2.3"
+version="1.2.4"
 description="Network Automation and Programmability Abstraction Layer driver for Mikrotik ROS"
 readme = "README.md"
 requires-python = ">=3.7"

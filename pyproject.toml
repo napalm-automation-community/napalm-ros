@@ -2,19 +2,26 @@
 requires = ["setuptools>=56.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[project]
+[tool.poetry]
 name = "napalm-ros"
 version="1.2.4"
 description="Network Automation and Programmability Abstraction Layer driver for Mikrotik ROS"
 readme = "README.md"
-requires-python = ">=3.7"
-authors = [
-  { name="Łukasz Kostka", email="lukasz.g.kostka@gmail.com" },
+authors = ["Łukasz Kostka <lukasz.g.kostka@gmail.com>"]
+license = "GPL-2.0-or-later"
+documentation="https://github.com/napalm-automation-community/napalm-ros"
+repository="https://github.com/napalm-automation-community/napalm-ros/issues"
+keywords=[
+  "mikrotik",
+  "routeros",
+  "api",
+  "napalm",
 ]
 
-[project.urls]
-"Homepage" = "https://github.com/napalm-automation-community/napalm-ros"
-"Bug Tracker" = "https://github.com/napalm-automation-community/napalm-ros/issues"
+[tool.poetry.dependencies]
+python = "^3.7.2"
+napalm = "^4.0.0"
+librouteros = "^3.2.0"
 
 [project.optional-dependencies]
 tests = [

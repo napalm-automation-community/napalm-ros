@@ -1,4 +1,4 @@
-name: Run tests
+name: Test, lint, format
 
 on:
   push:
@@ -11,8 +11,12 @@ on:
       - $default-branch
   workflow_call:
 
+env:
+  DEFAULT_PY_VERSION: "3.11"
+
 jobs:
-  test:
+  Test:
+    name: Test
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -45,10 +49,65 @@ jobs:
         if: steps.pysetup.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
 
+      - name: Test
+        run: >
+          poetry run
+          pytest tests
+
+  Lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        id: pysetup
+        with:
+          python-version: ${{ env.DEFAULT_PY_VERSION }}
+          cache: "poetry"
+
+      - name: Install Python dependencies
+        if: steps.pysetup.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction
+
       - name: Lint
         run: >
           poetry run
           pylint napalm_ros
+
+  Format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        id: pysetup
+        with:
+          python-version: ${{ env.DEFAULT_PY_VERSION }}
+          cache: "poetry"
+
+      - name: Install Python dependencies
+        if: steps.pysetup.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction
 
       - name: Format
         run: >
@@ -56,8 +115,3 @@ jobs:
           yapf -dr
           napalm_ros
           tests
-
-      - name: Unit tests
-        run: >
-          poetry run
-          pytest tests

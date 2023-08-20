@@ -33,10 +33,6 @@ jobs:
 
       - name: Install poetry
         uses: snok/install-poetry@v1
-        with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-          installer-parallel: true
 
       - name: Set up Python
         uses: actions/setup-python@v4

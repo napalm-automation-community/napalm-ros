@@ -1,40 +1,34 @@
+from datetime import timedelta
+
 from napalm.base.helpers import (
     ip as cast_ip,
 )
 
 
-def rtt(key, iterable):
-    return (float(row.get(key, '-1ms').replace('ms', '')) for row in iterable)
-
-
-def to_seconds(time_format):
-    seconds = minutes = hours = days = weeks = 0
-
-    number_buffer = ''
-    for current_character in time_format:
-        if current_character.isdigit():
-            number_buffer += current_character
-            continue
-        if current_character == 's':
-            seconds = int(number_buffer)
-        elif current_character == 'm':
-            minutes = int(number_buffer)
-        elif current_character == 'h':
-            hours = int(number_buffer)
-        elif current_character == 'd':
-            days = int(number_buffer)
-        elif current_character == 'w':
-            weeks = int(number_buffer)
-        else:
-            raise ValueError(f'Invalid specifier - [{current_character}]')
-        number_buffer = ''
-
-    seconds += (minutes * 60)
-    seconds += (hours * 3600)
-    seconds += (days * 86400)
-    seconds += (weeks * 604800)
-
-    return seconds
+def parse_duration(duration_str: str):
+    tdmap = {
+        'w': 'weeks',
+        'd': 'days',
+        'h': 'hours',
+        'm': 'minutes',
+        's': 'seconds',
+        'ms': 'milliseconds',
+        'us': 'microseconds',
+    }
+    tdargs = dict()
+    nums = ''
+    unit = ''
+    for char in duration_str:
+        if char.isdigit() and not unit:
+            nums += char
+        elif char.isalpha() and nums:
+            unit += char
+        elif char.isdigit() and unit:
+            tdargs[tdmap[unit]] = int(nums)
+            nums = char
+            unit = ''
+    tdargs[tdmap[unit]] = int(nums)
+    return timedelta(**tdargs)
 
 
 def iface_addresses(rows, ifname):

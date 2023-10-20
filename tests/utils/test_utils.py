@@ -10,10 +10,12 @@ from napalm_ros import utils
         ('1h1m10s', 3670),
         ('1d1h1m10s', 90070),
         ('1w1d1h1m10s', 694870),
+        ('9ms360us', 0.00936),
+        ('9ms', 0.009),
     )
 )
-def test_to_seconds(passed, expected):
-    assert utils.to_seconds(passed) == expected
+def test_parse_duration(passed, expected):
+    assert utils.parse_duration(passed).total_seconds() == expected
 
 
 @pytest.mark.parametrize(
@@ -34,5 +36,8 @@ def test_iface_addresses(passed, expected):
 
 
 def test_iface_addresses_empty():
-    rows = ({'interface': 'ether1', 'address': '192.168.1.1/24'}, )
+    rows = ({
+        'interface': 'ether1',
+        'address': '192.168.1.1/24'
+    }, )
     assert utils.iface_addresses(rows, 'ether2') == {}

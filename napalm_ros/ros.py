@@ -33,9 +33,8 @@ from napalm.base.exceptions import ConnectionException
 
 # Import local modules
 from napalm_ros.utils import (
-    to_seconds,
     iface_addresses,
-    rtt,
+    parse_duration,
 )
 from napalm_ros.query import (
     bgp_instances,
@@ -152,7 +151,7 @@ class ROSDriver(NetworkDriver):
                     "is_up": peer.get("established", False),
                     "is_enabled": not peer["disabled"],
                     "description": peer["name"],
-                    "uptime": to_seconds(peer.get("uptime", "0s")),
+                    "uptime": int(parse_duration(peer.get("uptime", "0s")).total_seconds()),
                     "address_family": prefix_stats,
                 }
         return dict(bgp_neighbors)
@@ -348,7 +347,7 @@ class ROSDriver(NetworkDriver):
         if pkg_resources.get_distribution("napalm").parsed_version.major == 3:
             to_type = int
         return {
-            'uptime': to_type(to_seconds(resource['uptime'])),
+            'uptime': to_type(parse_duration(resource['uptime']).total_seconds()),
             'vendor': resource['platform'],
             'model': resource['board-name'],
             'hostname': identity['name'],
@@ -501,18 +500,20 @@ class ROSDriver(NetworkDriver):
         ping_results = {
             'probes_sent': max(row['sent'] for row in results),
             'packet_loss': max(row['packet-loss'] for row in results),
-            'rtt_min': min(rtt('min-rtt', results)),
-            'rtt_max': max(rtt('max-rtt', results)),  # Last result has calculated avg
-            'rtt_avg': float(results[-1].get('avg-rtt', '-1ms').replace('ms', '')),
+            'rtt_min': parse_duration(results[-1]['min-rtt']).total_seconds() * 1000,
+            'rtt_max': parse_duration(results[-1]['max-rtt']).total_seconds() * 1000,
+            'rtt_avg': parse_duration(results[-1]['avg-rtt']).total_seconds() * 1000,
             'rtt_stddev': float(-1),
             'results': []
         }
 
         for row in results:
-            ping_results['results'].append({
-                'ip_address': cast_ip(row['host']),
-                'rtt': float(row.get('time', '-1ms').replace('ms', '')),
-            })
+            ping_results['results'].append(
+                {
+                    'ip_address': cast_ip(row['host']),
+                    'rtt': parse_duration(row['time']).total_seconds() * 1000,
+                }
+            )
 
         return dict(success=ping_results)
 
@@ -604,10 +605,10 @@ def bgp_peer_detail(peer, inst, sent_prefixes):
         "last_event": "",
         "suppress_4byte_as": not peer.get("as4-capability", True),
         "local_as_prepend": False,
-        "holdtime": to_seconds(peer.get("used-hold-time", peer.get("hold-time", "30s"))),
-        "configured_holdtime": to_seconds(peer.get("hold-time", "30s")),
-        "keepalive": to_seconds(peer.get("used-keepalive-time", "10s")),
-        "configured_keepalive": to_seconds(peer.get("keepalive-time", "10s")),
+        "holdtime": int(parse_duration(peer.get("used-hold-time", peer.get("hold-time", "30s"))).total_seconds()),
+        "configured_holdtime": int(parse_duration(peer.get("hold-time", "30s")).total_seconds()),
+        "keepalive": int(parse_duration(peer.get("used-keepalive-time", "10s")).total_seconds()),
+        "configured_keepalive": int(parse_duration(peer.get("keepalive-time", "10s")).total_seconds()),
         "active_prefix_count": peer.get("prefix-count", 0),
         "received_prefix_count": peer.get("prefix-count", 0),
         "accepted_prefix_count": peer.get("prefix-count", 0),

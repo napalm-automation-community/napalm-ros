@@ -1,44 +1,37 @@
 """NAPALM driver for MikroTik RouterBoard OS (ROS)"""
 from __future__ import unicode_literals
 
-from collections import defaultdict
-from itertools import chain
 import socket
 import ssl
 import re
 from packaging.version import parse as version_parse
-import paramiko
+from collections import defaultdict
+from itertools import chain
 
+import paramiko
+import librouteros.login
 from librouteros import connect
 from librouteros.exceptions import TrapError
 from librouteros.exceptions import FatalError
 from librouteros.exceptions import MultiTrapError
-import librouteros.login
 from librouteros.query import (
     Key,
     And,
 )
+
 from netaddr import IPAddress, IPNetwork
 from netaddr.core import AddrFormatError
 
-from napalm.base import NetworkDriver
 import napalm.base.utils.string_parsers
 import napalm.base.constants as C
+from napalm.base import NetworkDriver
 from napalm.base.helpers import ip as cast_ip
 from napalm.base.helpers import mac as cast_mac
 from napalm.base.exceptions import ConnectionException
 
-from napalm_ros.utils import (
-    iface_addresses,
-    parse_duration,
-)
-from napalm_ros.query import (
-    bgp_instances,
-    bgp_advertisments,
-    bgp_peers,
-    lldp_neighbors,
-    not_disabled,
-    Keys,
+from napalm_ros import (
+    utils,
+    query,
 )
 
 
@@ -120,9 +113,9 @@ class ROSDriver(NetworkDriver):
                 if len(peer["address-families"].split(",")) > 1:
                     for af in peer["address-families"].split(","):
                         prefix_count = len(
-                            self.api.path(f"/{af}/route").select(Keys.dst_addr).where(
-                                Keys.bgp == True,
-                                Keys.rcv_from == peer["name"],
+                            self.api.path(f"/{af}/route").select(query.Keys.dst_addr).where(
+                                query.Keys.bgp == True,
+                                query.Keys.rcv_from == peer["name"],
                             )
                         )
                         family = "ipv4" if af == "ip" else af
@@ -145,25 +138,25 @@ class ROSDriver(NetworkDriver):
                     "is_up": peer.get("established", False),
                     "is_enabled": not peer["disabled"],
                     "description": peer["name"],
-                    "uptime": int(parse_duration(peer.get("uptime", "0s")).total_seconds()),
+                    "uptime": int(utils.parse_duration(peer.get("uptime", "0s")).total_seconds()),
                     "address_family": prefix_stats,
                 }
         return dict(bgp_neighbors)
 
     def get_bgp_neighbors_detail(self, neighbor_address=""):
-        peers = self.api.path("/routing/bgp/peer").select(*bgp_peers)
+        peers = self.api.path("/routing/bgp/peer").select(*query.bgp_peers)
         if neighbor_address:
             peers.where(Key('remote-address') == neighbor_address)
         peers = tuple(peers)
         peer_names = set(row['name'] for row in peers)
         peers_instances = set(row['instance'] for row in peers)
-        advertisements = self.api.path("/routing/bgp/advertisements").select(*bgp_advertisments)
+        advertisements = self.api.path("/routing/bgp/advertisements").select(*query.bgp_advertisments)
         advertisements.where(Key('peer').In(*peer_names))
         advertisements = tuple(advertisements)
-        instances = self.api.path('/routing/bgp/instance').select(*bgp_instances)
+        instances = self.api.path('/routing/bgp/instance').select(*query.bgp_instances)
         instances.where(And(
             Key('name').In(*peers_instances),
-            not_disabled,
+            query.not_disabled,
         ))
 
         # Count prefixes advertised to each peer
@@ -184,14 +177,14 @@ class ROSDriver(NetworkDriver):
 
     def get_arp_table(self, vrf=""):
         arp = self.api.path('/ip/arp').select(
-            Keys.interface,
-            Keys.mac_address,
-            Keys.address,
+            query.Keys.interface,
+            query.Keys.mac_address,
+            query.Keys.address,
         )
         if vrf:
-            vrfs = self.api.path('/ip/route/vrf').select(Keys.interfaces).where(Keys.routing_mark == vrf)
-            interfaces = flatten_split(vrfs, str(Keys.interfaces))
-            arp.where(Keys.interface.In(*interfaces))
+            vrfs = self.api.path('/ip/route/vrf').select(query.Keys.interfaces).where(query.Keys.routing_mark == vrf)
+            interfaces = flatten_split(vrfs, str(query.Keys.interfaces))
+            arp.where(query.Keys.interface.In(*interfaces))
         return list(convert_arp_table(arp))
 
     def get_mac_address_table(self):
@@ -230,21 +223,21 @@ class ROSDriver(NetworkDriver):
         return table
 
     def get_network_instances(self, name=""):
-        query = self.api.path('/ip/route/vrf').select(
-            Keys.interfaces,
-            Keys.route_distinguisher,
-            Keys.routing_mark,
+        query_ = self.api.path('/ip/route/vrf').select(
+            query.Keys.interfaces,
+            query.Keys.route_distinguisher,
+            query.Keys.routing_mark,
         )
         if name:
-            query.where(Keys.routing_mark == name)
-        return convert_vrf_table(query)
+            query_.where(query.Keys.routing_mark == name)
+        return convert_vrf_table(query_)
 
     def get_lldp_neighbors(self):
         table = defaultdict(list)
         for entry in self.api.path('/ip/neighbor').select(
-            Keys.identity,
-            Keys.interface_name,
-            Keys.interface,
+            query.Keys.identity,
+            query.Keys.interface_name,
+            query.Keys.interface,
         ):
             ifaces = LLDPInterfaces.fromApi(entry['interface'])
             table[ifaces.child].append(dict(
@@ -255,7 +248,7 @@ class ROSDriver(NetworkDriver):
 
     def get_lldp_neighbors_detail(self, interface=""):
         table = defaultdict(list)
-        for entry in self.api.path('/ip/neighbor').select(*lldp_neighbors):
+        for entry in self.api.path('/ip/neighbor').select(*query.lldp_neighbors):
             ifaces = LLDPInterfaces.fromApi(entry['interface'])
             table[ifaces.child].append(
                 dict(
@@ -338,7 +331,7 @@ class ROSDriver(NetworkDriver):
         routerboard = tuple(self.api('/system/routerboard/print'))[0]
         interfaces = tuple(self.api('/interface/print'))
         return {
-            'uptime': float(parse_duration(resource['uptime']).total_seconds()),
+            'uptime': float(utils.parse_duration(resource['uptime']).total_seconds()),
             'vendor': resource['platform'],
             'model': resource['board-name'],
             'hostname': identity['name'],
@@ -396,13 +389,13 @@ class ROSDriver(NetworkDriver):
         ipv4_addresses = tuple(self.api('/ip/address/print'))
         for ifname in (row['interface'] for row in ipv4_addresses):
             interfaces_ip.setdefault(ifname, {})
-            interfaces_ip[ifname]['ipv4'] = iface_addresses(ipv4_addresses, ifname)
+            interfaces_ip[ifname]['ipv4'] = utils.iface_addresses(ipv4_addresses, ifname)
 
         try:
             ipv6_addresses = tuple(self.api('/ipv6/address/print'))
             for ifname in (row['interface'] for row in ipv6_addresses):
                 interfaces_ip.setdefault(ifname, {})
-                interfaces_ip[ifname]['ipv6'] = iface_addresses(ipv6_addresses, ifname)
+                interfaces_ip[ifname]['ipv6'] = utils.iface_addresses(ipv6_addresses, ifname)
         except (TrapError, MultiTrapError):
             pass
 
@@ -489,9 +482,9 @@ class ROSDriver(NetworkDriver):
         ping_results = {
             'probes_sent': max(row['sent'] for row in results),
             'packet_loss': max(row['packet-loss'] for row in results),
-            'rtt_min': parse_duration(results[-1]['min-rtt']).total_seconds() * 1000,
-            'rtt_max': parse_duration(results[-1]['max-rtt']).total_seconds() * 1000,
-            'rtt_avg': parse_duration(results[-1]['avg-rtt']).total_seconds() * 1000,
+            'rtt_min': utils.parse_duration(results[-1]['min-rtt']).total_seconds() * 1000,
+            'rtt_max': utils.parse_duration(results[-1]['max-rtt']).total_seconds() * 1000,
+            'rtt_avg': utils.parse_duration(results[-1]['avg-rtt']).total_seconds() * 1000,
             'rtt_stddev': float(-1),
             'results': []
         }
@@ -500,7 +493,7 @@ class ROSDriver(NetworkDriver):
             ping_results['results'].append(
                 {
                     'ip_address': cast_ip(row['host']),
-                    'rtt': parse_duration(row['time']).total_seconds() * 1000,
+                    'rtt': utils.parse_duration(row['time']).total_seconds() * 1000,
                 }
             )
 
@@ -594,10 +587,10 @@ def bgp_peer_detail(peer, inst, sent_prefixes):
         "last_event": "",
         "suppress_4byte_as": not peer.get("as4-capability", True),
         "local_as_prepend": False,
-        "holdtime": int(parse_duration(peer.get("used-hold-time", peer.get("hold-time", "30s"))).total_seconds()),
-        "configured_holdtime": int(parse_duration(peer.get("hold-time", "30s")).total_seconds()),
-        "keepalive": int(parse_duration(peer.get("used-keepalive-time", "10s")).total_seconds()),
-        "configured_keepalive": int(parse_duration(peer.get("keepalive-time", "10s")).total_seconds()),
+        "holdtime": int(utils.parse_duration(peer.get("used-hold-time", peer.get("hold-time", "30s"))).total_seconds()),
+        "configured_holdtime": int(utils.parse_duration(peer.get("hold-time", "30s")).total_seconds()),
+        "keepalive": int(utils.parse_duration(peer.get("used-keepalive-time", "10s")).total_seconds()),
+        "configured_keepalive": int(utils.parse_duration(peer.get("keepalive-time", "10s")).total_seconds()),
         "active_prefix_count": peer.get("prefix-count", 0),
         "received_prefix_count": peer.get("prefix-count", 0),
         "accepted_prefix_count": peer.get("prefix-count", 0),

@@ -1,0 +1,70 @@
+{
+    "data":
+    [
+        {
+            "seq": 0,
+            "host": "127.0.0.1",
+            "size": 56,
+            "ttl": 60,
+            "time": "9ms445us",
+            "sent": 1,
+            "received": 1,
+            "packet-loss": 0,
+            "min-rtt": "9ms445us",
+            "avg-rtt": "9ms445us",
+            "max-rtt": "9ms445us"
+        },
+        {
+            "seq": 1,
+            "host": "127.0.0.1",
+            "size": 56,
+            "ttl": 60,
+            "time": "9ms237us",
+            "sent": 2,
+            "received": 2,
+            "packet-loss": 0,
+            "min-rtt": "9ms237us",
+            "avg-rtt": "9ms341us",
+            "max-rtt": "9ms445us"
+        },
+        {
+            "seq": 2,
+            "host": "127.0.0.1",
+            "size": 56,
+            "ttl": 60,
+            "time": "9ms173us",
+            "sent": 3,
+            "received": 3,
+            "packet-loss": 0,
+            "min-rtt": "9ms173us",
+            "avg-rtt": "9ms285us",
+            "max-rtt": "9ms445us"
+        },
+        {
+            "seq": 3,
+            "host": "127.0.0.1",
+            "size": 56,
+            "ttl": 60,
+            "time": "9ms217us",
+            "sent": 4,
+            "received": 4,
+            "packet-loss": 0,
+            "min-rtt": "9ms173us",
+            "avg-rtt": "9ms268us",
+            "max-rtt": "9ms445us"
+        },
+        {
+            "seq": 4,
+            "host": "127.0.0.1",
+            "size": 56,
+            "ttl": 60,
+            "time": "9ms728us",
+            "sent": 5,
+            "received": 5,
+            "packet-loss": 0,
+            "min-rtt": "9ms173us",
+            "avg-rtt": "9ms360us",
+            "max-rtt": "9ms728us"
+        }
+    ]
+}

@@ -1,0 +1,32 @@
+{
+    "success": {
+        "packet_loss": 0,
+        "probes_sent": 5,
+        "rtt_avg": 9.36,
+        "rtt_stddev": -1.0,
+        "rtt_min": 9.173,
+        "rtt_max": 9.728,
+        "results": [
+            {
+                "rtt": 9.445,
+                "ip_address": "127.0.0.1"
+            },
+            {
+                "rtt": 9.237,
+                "ip_address": "127.0.0.1"
+            },
+            {
+                "rtt": 9.173,
+                "ip_address": "127.0.0.1"
+            },
+            {
+                "ip_address": "127.0.0.1",
+                "rtt": 9.216999999999999
+            },
+            {
+                "rtt": 9.728,
+                "ip_address": "127.0.0.1"
+            }
+        ]
+    }
+}

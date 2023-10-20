@@ -38,6 +38,6 @@ def test_iface_addresses(passed, expected):
 def test_iface_addresses_empty():
     rows = ({
         'interface': 'ether1',
-        'address': '192.168.1.1/24'
+        'address': '192.168.1.1/24',
     }, )
     assert utils.iface_addresses(rows, 'ether2') == {}

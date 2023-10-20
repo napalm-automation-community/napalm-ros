@@ -40,3 +40,6 @@ coalesce_brackets = false
 each_dict_entry_on_separate_line = true
 indent_dictionary_value = false
 split_arguments_when_comma_terminated = true
+
+[tool.ruff]
+line-length = 120

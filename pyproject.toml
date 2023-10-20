@@ -42,3 +42,6 @@ split_arguments_when_comma_terminated = true
 
 [tool.ruff]
 line-length = 160
+ignore = [
+    "E712",
+]

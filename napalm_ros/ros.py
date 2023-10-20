@@ -45,13 +45,10 @@ from napalm_ros.query import (
 )
 
 
-# pylint: disable=too-many-public-methods
-# pylint: disable=too-many-instance-attributes
 class ROSDriver(NetworkDriver):
 
     platform = 'ros'
 
-    # pylint: disable=super-init-not-called
     def __init__(self, hostname, username, password, timeout=60, optional_args=None):
         self.hostname = hostname
         self.username = username
@@ -106,7 +103,6 @@ class ROSDriver(NetworkDriver):
 
         return result
 
-    # pylint: disable=invalid-name
     def get_bgp_neighbors(self):
         bgp_neighbors = defaultdict(lambda: dict(peers={}))
         sent_prefixes = defaultdict(lambda: defaultdict(int))
@@ -126,10 +122,12 @@ class ROSDriver(NetworkDriver):
                 # the routing table if more than one address family is present on a peer
                 if len(peer["address-families"].split(",")) > 1:
                     for af in peer["address-families"].split(","):
-                        prefix_count = len(self.api.path(f"/{af}/route").select(Keys.dst_addr).where(
-                            Keys.bgp == True, # pylint: disable=singleton-comparison
-                            Keys.rcv_from == peer["name"],
-                        ))
+                        prefix_count = len(
+                            self.api.path(f"/{af}/route").select(Keys.dst_addr).where(
+                                Keys.bgp == True,
+                                Keys.rcv_from == peer["name"],
+                            )
+                        )
                         family = "ipv4" if af == "ip" else af
                         prefix_stats[family] = {
                             "sent_prefixes": sent_prefixes.get(peer["name"], {}).get(family, 0),
@@ -466,10 +464,8 @@ class ROSDriver(NetworkDriver):
                 ssl_wrapper=self.ssl_wrapper,
             )
         except (TrapError, FatalError, socket.timeout, socket.error, MultiTrapError) as exc:
-            # pylint: disable=raise-missing-from
             raise ConnectionException(f"Could not connect to {self.hostname}:{self.port} - [{exc!r}]")
 
-    # pylint: disable=too-many-arguments
     def ping(
         self,
         destination,

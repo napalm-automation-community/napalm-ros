@@ -78,7 +78,7 @@ jobs:
       - name: Lint
         run: >
           poetry run
-          pylint napalm_ros
+          ruff check napalm_ros
 
   Format:
     name: Format

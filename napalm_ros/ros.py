@@ -1,4 +1,4 @@
-"""NAPALM driver for Mikrotik RouterBoard OS (ROS)"""
+"""NAPALM driver for MikroTik RouterBoard OS (ROS)"""
 from __future__ import unicode_literals
 
 from collections import defaultdict
@@ -9,7 +9,6 @@ import re
 from packaging.version import parse as version_parse
 import paramiko
 
-# Import third party libs
 from librouteros import connect
 from librouteros.exceptions import TrapError
 from librouteros.exceptions import FatalError
@@ -22,7 +21,6 @@ from librouteros.query import (
 from netaddr import IPAddress, IPNetwork
 from netaddr.core import AddrFormatError
 
-# Import NAPALM base
 from napalm.base import NetworkDriver
 import napalm.base.utils.string_parsers
 import napalm.base.constants as C
@@ -30,7 +28,6 @@ from napalm.base.helpers import ip as cast_ip
 from napalm.base.helpers import mac as cast_mac
 from napalm.base.exceptions import ConnectionException
 
-# Import local modules
 from napalm_ros.utils import (
     iface_addresses,
     parse_duration,
@@ -111,14 +108,14 @@ class ROSDriver(NetworkDriver):
         for route in self.api("/routing/bgp/advertisements/print"):
             ip_version = IPNetwork(route["prefix"]).version
             sent_prefixes[route["peer"]][f"ipv{ip_version}"] += 1
-        # Calculate stats for each routing bgp instance
+        # Calculate stats for each routing BGP instance
         for inst in self.api("/routing/bgp/instance/print"):
             instance_name = "global" if inst["name"] == "default" else inst["name"]
             bgp_neighbors[instance_name]["router_id"] = inst["router-id"]
             inst_peers = find_rows(self.api("/routing/bgp/peer/print"), key="instance", value=inst["name"])
             for peer in inst_peers:
                 prefix_stats = {}
-                # Mikrotik prefix counts are not per-AFI so attempt to query
+                # MikroTik prefix counts are not per-AFI so attempt to query
                 # the routing table if more than one address family is present on a peer
                 if len(peer["address-families"].split(",")) > 1:
                     for af in peer["address-families"].split(","):
@@ -204,7 +201,7 @@ class ROSDriver(NetworkDriver):
                 dict(
                     mac=entry['mac-address'],
                     interface=entry['interface'],
-                    vlan=entry.get('vid', 1),     # The vid is not consistently set in the API
+                    vlan=entry.get('vid', 1),     # Vlan id is not consistently set in the API
                     static=not entry['dynamic'],
                     active=not entry['invalid'],
                     moves=0,
@@ -521,8 +518,8 @@ def find_rows(rows, key, value):
 
 def flatten_split(rows, key):
     """
-    Iterate over given rows and split each foun key by ','
-    Returns unique splitted items.
+    Iterate over given rows and split each found key by ','
+    Returns unique split items.
     """
     items = (row[key].split(',') for row in rows)
     return set(chain.from_iterable(items))

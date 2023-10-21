@@ -508,7 +508,7 @@ class ROSDriver(NetworkDriver):
                 ifs = set(chain(untagged, tagged))
                 result[vid] = {
                     "name": "",
-                    "interfaces": list(ifs),
+                    "interfaces": sorted(list(ifs)),
                 }
         return result
 

@@ -40,3 +40,11 @@ order matter.
 * get_bgp_neighbors_detail
 * get_config
 * get_vlans
+
+### Not implemented
+
+* `get_route_to` and `get_route_to_longer` Impossible to implement since API does not allow scripting. Under cli you can get all routes to given ip address with `/ip route print detail where 1.1.1.1 in dst-address and active`
+* `get_firewall_policies` MikroTik doesn't have such concept.
+* `get_probes_config` and `get_probes_results` JunOS specific concept.
+* `get_ntp_peers` No such concept. Server doesn't track any peer status.
+* `get_ntp_stats` No detailed stats for client nor server.

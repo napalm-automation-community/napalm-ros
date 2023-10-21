@@ -1,0 +1,16 @@
+{
+    "10": {
+        "name": "",
+        "interfaces": [
+            "ether2",
+            "ether1"
+        ]
+    },
+    "20": {
+        "name": "",
+        "interfaces": [
+            "ether2",
+            "ether1"
+        ]
+    }
+}

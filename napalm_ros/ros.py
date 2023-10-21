@@ -499,6 +499,19 @@ class ROSDriver(NetworkDriver):
 
         return dict(success=ping_results)
 
+    def get_vlans(self):
+        result = dict()
+        for row in self.api('/interface/bridge/vlan/print'):
+            for vid in row['vlan-ids'].split(','):
+                untagged = filter(None, row['untagged'].split(','))
+                tagged = filter(None, row['tagged'].split(','))
+                ifs = set(chain(untagged, tagged))
+                result[vid] = {
+                    "name": "",
+                    "interfaces": list(ifs),
+                }
+        return result
+
 
 def find_rows(rows, key, value):
     """

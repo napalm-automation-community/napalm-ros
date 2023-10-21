@@ -1,0 +1,14 @@
+{
+    "data":
+    [
+        {
+            "disabled": false,
+            "comment": "",
+            "tagged": "ether1,ether2",
+            "untagged": "",
+            "vlan-ids": "10,20",
+            "bridge": "bridge1"
+        }
+    ]
+}
+

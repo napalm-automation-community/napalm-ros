@@ -39,3 +39,4 @@ order matter.
 * get_bgp_neighbors
 * get_bgp_neighbors_detail
 * get_config
+* get_vlans

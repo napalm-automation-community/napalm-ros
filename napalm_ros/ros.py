@@ -105,7 +105,8 @@ class ROSDriver(NetworkDriver):
         for inst in self.api("/routing/bgp/instance/print"):
             instance_name = "global" if inst["name"] == "default" else inst["name"]
             bgp_neighbors[instance_name]["router_id"] = inst["router-id"]
-            inst_peers = find_rows(self.api("/routing/bgp/peer/print"), key="instance", value=inst["name"])
+            filt_fn = lambda x: x['instance'] == inst['name']
+            inst_peers = filter(filt_fn, self.api("/routing/bgp/peer/print"))
             for peer in inst_peers:
                 prefix_stats = {}
                 # MikroTik prefix counts are not per-AFI so attempt to query
@@ -167,7 +168,8 @@ class ROSDriver(NetworkDriver):
         bgp_neighbors = defaultdict(lambda: defaultdict(list))
         for inst in instances:
             instance_name = "global" if inst["name"] == "default" else inst["name"]
-            inst_peers = find_rows(peers, key="instance", value=inst["name"])
+            filt_fn = lambda x: x['instance'] == inst['name']
+            inst_peers = filter(filt_fn, peers)
 
             for peer in inst_peers:
                 peer_details = bgp_peer_detail(peer, inst, sent_prefixes)
@@ -511,15 +513,6 @@ class ROSDriver(NetworkDriver):
                     "interfaces": sorted(list(ifs)),
                 }
         return result
-
-
-def find_rows(rows, key, value):
-    """
-    Yield each found row in which key == value.
-    """
-    for row in rows:
-        if row.get(key) == value:
-            yield row
 
 
 def flatten_split(rows, key):

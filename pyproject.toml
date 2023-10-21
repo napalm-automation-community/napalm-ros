@@ -44,4 +44,5 @@ split_arguments_when_comma_terminated = true
 line-length = 160
 ignore = [
     "E712",
+    "E731",
 ]

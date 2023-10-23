@@ -1,5 +1,5 @@
 {
-    "running": "# by RouterOS 7.4\n# software id = XXXX-XXXX\n#\n# model = 751G-2HnD\n# serial number = XXXXXXXXXXXX\n/interface bridge auto-mac=yes name=bridge\n/ip address add address=1.1.1.1/24 interface=ether1 comment=\"some comment with spaces\"",
+    "running": "# by RouterOS 7.4\n# software id = XXXX-XXXX\n# model = 751G-2HnD\n# serial number = XXXXXXXXXXXX\n/interface bridge auto-mac=yes name=bridge\n/ip address add address=1.1.1.1/24 interface=ether1 comment=\"some comment with spaces\"",
     "candidate": "",
     "startup": ""
 }

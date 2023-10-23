@@ -8,7 +8,6 @@ from packaging.version import parse as version_parse
 from collections import defaultdict
 from itertools import chain
 
-import paramiko
 import librouteros.login
 from librouteros import connect
 from librouteros.exceptions import TrapError
@@ -61,10 +60,7 @@ class ROSDriver(NetworkDriver):
 
         self.ssl_wrapper = self.optional_args.get('ssl_wrapper', librouteros.DEFAULTS['ssl_wrapper'])
         self.port = self.optional_args.get('port', 8729 if 'ssl_wrapper' in self.optional_args else 8728)
-        self.ssh_port = self.optional_args.get('ssh_port', 22)
-        self.paramiko_look_for_keys = self.optional_args.get('paramiko_look_for_keys', False)
         self.api = None
-        self.ssh = None
 
     def close(self):
         self.api.close()
@@ -346,29 +342,27 @@ class ROSDriver(NetworkDriver):
         }
 
     def get_config(self, retrieve='all', full=False, sanitized=False):
+        file_name = 'napalm_get_config'
         configs = {'running': '', 'candidate': '', 'startup': ''}
-        command = ["export", "terse"]
+        cmd_args = {'terse': True, 'file': file_name}
         version = tuple(self.api('/system/package/update/print'))[0]
         version = version_parse(version['installed-version'])
         if full:
-            command.append("verbose")
+            cmd_args["verbose"] = True
         if version.major >= 7 and not sanitized:
-            command.append("show-sensitive")
+            cmd_args["show-sensitive"] = True
         if version.major <= 6 and sanitized:
-            command.append("hide-sensitive")
-        self.ssh.connect(
-            self.hostname,
-            port=self.ssh_port,
-            username=self.username,
-            password=self.password,
-            look_for_keys=self.paramiko_look_for_keys,
-        )
-        _, stdout, _ = self.ssh.exec_command(" ".join(command))
-        config = stdout.read().decode().strip()
+            cmd_args["hide-sensitive"] = True
+        fid = tuple(self.api.path('/file').select(query.Keys.id_).where(query.Keys.name == f"{file_name}.rsc"))
+        if fid:
+            tuple(self.api('/file/remove', **fid[0]))
+        tuple(self.api('/export', **cmd_args))
+        found = self.api.path('/file').select(query.Keys.contents).where(query.Keys.name == f"{file_name}.rsc")
+        config = tuple(found)[0]['contents']
         # remove date/time in 1st line
         config = re.sub(r"^# \S+ \S+ by (.+)$", r'# by \1', config, flags=re.MULTILINE)
         if retrieve in ("running", "all"):
-            configs['running'] = config
+            configs['running'] = config.replace('\r\n', '\n')
         return configs
 
     def get_interfaces(self):
@@ -441,8 +435,6 @@ class ROSDriver(NetworkDriver):
         return users
 
     def open(self):
-        self.ssh = paramiko.SSHClient()
-        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         method = self.optional_args.get('login_method', 'plain')
         method = getattr(librouteros.login, method)
         try:

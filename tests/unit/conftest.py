@@ -79,27 +79,10 @@ class PatchedROSDevice(ros.ROSDriver):
 
     def __init__(self, hostname, username, password, timeout=60, optional_args=None):
         super().__init__(hostname, username, password, timeout, optional_args)
-        self.patched_attrs = ['api', 'ssh']
+        self.patched_attrs = ['api']
 
     def open(self):
         self.api = FakeApi()
-        self.ssh = FakeSSH()
-
-
-class FakeSSH(BaseTestDouble):
-
-    def exec_command(self, command):
-        sanitized_command = self.sanitize_text(command)
-        stdout_path = self.find_file(f'ssh_exec_{sanitized_command}_stdout')
-        stderr_path = self.find_file(f'ssh_exec_{sanitized_command}_stderr')
-        return (
-            BytesIO(),  # stdin
-            BytesIO(initial_bytes=self.read_txt_file(stdout_path).encode()),  #stdout
-            BytesIO(initial_bytes=self.read_txt_file(stderr_path).encode()),  #stderr
-        )
-
-    def connect(self, *args, **kwargs):
-        pass
 
 
 class FakeApi(BaseTestDouble):

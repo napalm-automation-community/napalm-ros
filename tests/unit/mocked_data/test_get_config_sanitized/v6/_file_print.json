@@ -1,0 +1,11 @@
+{
+    "data":
+    [
+        {
+            ".id": "*100",
+            "name": "napalm_get_config.rsc",
+            "type": "script",
+            "contents": "# aug/13/2022 21:34:26 by RouterOS 7.4\r\n# software id = XXXX-XXXX\r\n# model = 751G-2HnD\r\n# serial number = XXXXXXXXXXXX\r\n/interface bridge auto-mac=yes name=bridge\r\n/ip address add address=1.1.1.1/24 interface=ether1 comment=\"some comment with spaces\""
+        }
+    ]
+}

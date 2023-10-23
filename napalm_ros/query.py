@@ -6,6 +6,8 @@ not_disabled = Key('disabled') == False
 
 # pylint: disable=too-few-public-methods
 class Keys:
+    id_ = Key('.id')
+    contents = Key('contents')
     address = Key('address')
     address_families = Key("address-families")
     as4_capability = Key("as4-capability")

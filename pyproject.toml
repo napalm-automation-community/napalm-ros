@@ -19,9 +19,9 @@ keywords=[
 ]
 
 [tool.poetry.dependencies]
-python = "^3.7.2"
+python = "^3.10"
 napalm = "^4.0.0"
-librouteros = "^3.2.0"
+librouteros = "^4.2.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"

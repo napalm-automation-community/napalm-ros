@@ -27,12 +27,24 @@ import napalm.base.constants as C
 from napalm.base import NetworkDriver
 from napalm.base.helpers import ip as cast_ip
 from napalm.base.helpers import mac as cast_mac
-from napalm.base.exceptions import ConnectionException
+from napalm.base.exceptions import (
+    CommitConfirmException,
+    CommitError,
+    ConnectionException,
+    MergeConfigException,
+    ReplaceConfigException,
+)
 
 from napalm_ros import (
     utils,
     query,
 )
+
+# Names of the on-device artifacts used for rollback. A backup taken before a plain
+# commit lets rollback() restore the previous state; the commit-confirm job is a
+# device-side scheduler that restores its own backup unless confirm_commit() cancels it.
+ROLLBACK_SNAPSHOT = 'napalm-rollback'
+REVERT_JOB = 'napalm-commit-confirm'
 
 
 class ROSDriver(NetworkDriver):
@@ -65,6 +77,9 @@ class ROSDriver(NetworkDriver):
         self.paramiko_look_for_keys = self.optional_args.get('paramiko_look_for_keys', False)
         self.api = None
         self.ssh = None
+        # Buffered candidate configuration (set by load_*_candidate, applied by commit_config).
+        self._candidate = None
+        self._config_replace = False
 
     def close(self):
         self.api.close()
@@ -368,6 +383,87 @@ class ROSDriver(NetworkDriver):
         if retrieve in ("running", "all"):
             configs['running'] = config
         return configs
+
+    # -- Configuration management (RouterOS 7.x, binary API only) --------------
+
+    def load_merge_candidate(self, filename=None, config=None):
+        self._candidate = self._read_candidate(filename, config)
+        self._config_replace = False
+
+    def load_replace_candidate(self, filename=None, config=None):
+        self._candidate = self._read_candidate(filename, config)
+        self._config_replace = True
+
+    @staticmethod
+    def _read_candidate(filename, config):
+        # A filename takes precedence over an inline config string (NAPALM contract).
+        if filename is not None:
+            with open(filename, 'r', encoding='utf-8') as handle:
+                return handle.read()
+        return config or ''
+
+    def compare_config(self):
+        if self._candidate is None:
+            return ''
+        return self.api.config().compare(self._candidate)
+
+    def discard_config(self):
+        self._candidate = None
+        self._config_replace = False
+
+    def commit_config(self, message='', revert_in=None):
+        if message:
+            raise NotImplementedError('Commit message not implemented for this platform')
+        if self._candidate is None:
+            raise CommitError('No candidate configuration loaded.')
+        # The NAPALM contract requires raising while a commit-confirm is still pending,
+        # rather than re-arming (which would corrupt the rollback baseline) or leaving a
+        # stale timer that later reboots the device.
+        if self.has_pending_commit():
+            raise CommitError('A commit confirm is already pending. Call confirm_commit or rollback first.')
+        if revert_in is not None and self._config_replace:
+            raise CommitConfirmException(
+                'Commit confirm (revert_in) is not supported with a replace on RouterOS, '
+                'because reset-configuration removes the scheduled rollback.'
+            )
+        cfg = self.api.config()
+        error = ReplaceConfigException if self._config_replace else MergeConfigException
+        try:
+            # Snapshot the pre-change state so rollback() can always restore the last
+            # commit. It must be persistent: a replace reboots, which would otherwise
+            # discard a backup stored on the RAM disk.
+            cfg.backup_save(ROLLBACK_SNAPSHOT, persistent=True)
+            if revert_in is not None:
+                # Device-side scheduler restores its backup unless confirm_commit() cancels it.
+                cfg.arm_rollback(revert_in, name=REVERT_JOB)
+        except (TrapError, MultiTrapError) as exc:
+            raise CommitError(f'Failed to prepare rollback: {exc}')
+        try:
+            if self._config_replace:
+                cfg.replace(self._candidate)
+            else:
+                cfg.apply(self._candidate)
+        except (TrapError, MultiTrapError) as exc:
+            raise error(str(exc))
+        self._candidate = None
+
+    def has_pending_commit(self):
+        return self.api.config().rollback_pending(name=REVERT_JOB)
+
+    def confirm_commit(self):
+        self.api.config().cancel_rollback(name=REVERT_JOB)
+
+    def rollback(self):
+        cfg = self.api.config()
+        # A pending commit-confirm is reverted by restoring its backup (this reboots the
+        # device); otherwise restore the snapshot taken by the last plain commit. Both
+        # backups are persistent (see commit_config).
+        if cfg.rollback_pending(name=REVERT_JOB):
+            cfg.backup_load(REVERT_JOB, persistent=True)
+        elif cfg.backup_exists(ROLLBACK_SNAPSHOT, persistent=True):
+            cfg.backup_load(ROLLBACK_SNAPSHOT, persistent=True)
+        else:
+            raise CommitError('No rollback snapshot available.')
 
     def get_interfaces(self):
         interfaces = {}

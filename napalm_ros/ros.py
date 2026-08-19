@@ -1,32 +1,21 @@
 """NAPALM driver for MikroTik RouterBoard OS (ROS)"""
-from __future__ import unicode_literals
 
-import socket
-import ssl
 import re
-from packaging.version import parse as version_parse
+import ssl
 from collections import defaultdict
 from itertools import chain
 
-import paramiko
 import librouteros.login
-from librouteros import connect
-from librouteros.exceptions import TrapError
-from librouteros.exceptions import FatalError
-from librouteros.exceptions import MultiTrapError
-from librouteros.query import (
-    Key,
-    And,
-)
-
-from netaddr import IPAddress, IPNetwork
-from netaddr.core import AddrFormatError
-
-import napalm.base.utils.string_parsers
 import napalm.base.constants as C
+import napalm.base.utils.string_parsers
+import paramiko
+from librouteros import connect
+from librouteros.exceptions import FatalError, MultiTrapError, TrapError
+from librouteros.query import (
+    And,
+    Key,
+)
 from napalm.base import NetworkDriver
-from napalm.base.helpers import ip as cast_ip
-from napalm.base.helpers import mac as cast_mac
 from napalm.base.exceptions import (
     CommitConfirmException,
     CommitError,
@@ -34,10 +23,15 @@ from napalm.base.exceptions import (
     MergeConfigException,
     ReplaceConfigException,
 )
+from napalm.base.helpers import ip as cast_ip
+from napalm.base.helpers import mac as cast_mac
+from netaddr import IPAddress, IPNetwork
+from netaddr.core import AddrFormatError
+from packaging.version import parse as version_parse
 
 from napalm_ros import (
-    utils,
     query,
+    utils,
 )
 
 # Names of the on-device artifacts used for rollback. A backup taken before a plain
@@ -109,7 +103,7 @@ class ROSDriver(NetworkDriver):
         return result
 
     def get_bgp_neighbors(self):
-        bgp_neighbors = defaultdict(lambda: dict(peers={}))
+        bgp_neighbors = defaultdict(lambda: {'peers': {}})
         sent_prefixes = defaultdict(lambda: defaultdict(int))
 
         # Count prefixes advertised to each configured peer
@@ -163,8 +157,8 @@ class ROSDriver(NetworkDriver):
         if neighbor_address:
             peers.where(Key('remote-address') == neighbor_address)
         peers = tuple(peers)
-        peer_names = set(row['name'] for row in peers)
-        peers_instances = set(row['instance'] for row in peers)
+        peer_names = {row['name'] for row in peers}
+        peers_instances = {row['instance'] for row in peers}
         advertisements = self.api.path("/routing/bgp/advertisements").select(*query.bgp_advertisments)
         advertisements.where(Key('peer').In(*peer_names))
         advertisements = tuple(advertisements)
@@ -206,29 +200,29 @@ class ROSDriver(NetworkDriver):
         table = []
         for entry in self.api('/interface/bridge/host/print'):
             table.append(
-                dict(
-                    mac=entry['mac-address'],
-                    interface=entry['interface'],
-                    vlan=entry.get('vid', 1),     # Vlan id is not consistently set in the API
-                    static=not entry['dynamic'],
-                    active=not entry['invalid'],
-                    moves=0,
-                    last_move=0.0,
-                )
+                {
+                    'mac': entry['mac-address'],
+                    'interface': entry['interface'],
+                    'vlan': entry.get('vid', 1),  # Vlan id is not consistently set in the API
+                    'static': not entry['dynamic'],
+                    'active': not entry['invalid'],
+                    'moves': 0,
+                    'last_move': 0.0,
+                }
             )
 
         try:
             for entry in self.api('/interface/ethernet/switch/unicast-fdb/print'):
                 table.append(
-                    dict(
-                        mac=entry['mac-address'],
-                        interface=entry['port'],
-                        vlan=entry['vlan-id'],
-                        static=not entry['dynamic'],
-                        active=entry['active'],
-                        moves=0,
-                        last_move=0.0,
-                    )
+                    {
+                        'mac': entry['mac-address'],
+                        'interface': entry['port'],
+                        'vlan': entry['vlan-id'],
+                        'static': not entry['dynamic'],
+                        'active': entry['active'],
+                        'moves': 0,
+                        'last_move': 0.0,
+                    }
                 )
         except librouteros.exceptions.TrapError:
             # This only exists in the CRS1XX and CRS2XX switches.
@@ -255,10 +249,10 @@ class ROSDriver(NetworkDriver):
             query.Keys.interface,
         ):
             ifaces = LLDPInterfaces.fromApi(entry['interface'])
-            table[ifaces.child].append(dict(
-                hostname=entry['identity'],
-                port=entry.get('interface-name', ''),
-            ))
+            table[ifaces.child].append({
+                'hostname': entry['identity'],
+                'port': entry.get('interface-name', ''),
+            })
         return table
 
     def get_lldp_neighbors_detail(self, interface=""):
@@ -266,16 +260,16 @@ class ROSDriver(NetworkDriver):
         for entry in self.api.path('/ip/neighbor').select(*query.lldp_neighbors):
             ifaces = LLDPInterfaces.fromApi(entry['interface'])
             table[ifaces.child].append(
-                dict(
-                    parent_interface=ifaces.parent,
-                    remote_chassis_id=entry.get('mac-address', ''),
-                    remote_system_name=entry.get('identity', ''),
-                    remote_port=entry.get('interface-name', ''),
-                    remote_port_description='',
-                    remote_system_description=entry.get('system-description', ''),
-                    remote_system_capab=entry.get('system-caps', '').split(','),
-                    remote_system_enable_capab=entry.get('system-caps-enabled', '').split(','),
-                )
+                {
+                    'parent_interface': ifaces.parent,
+                    'remote_chassis_id': entry.get('mac-address', ''),
+                    'remote_system_name': entry.get('identity', ''),
+                    'remote_port': entry.get('interface-name', ''),
+                    'remote_port_description': '',
+                    'remote_system_description': entry.get('system-description', ''),
+                    'remote_system_capab': entry.get('system-caps', '').split(','),
+                    'remote_system_enable_capab': entry.get('system-caps-enabled', '').split(','),
+                }
             )
         # There is no way of sending query for specific interface since parent and child
         # interface is embedded within one field on MikroTik
@@ -312,8 +306,8 @@ class ROSDriver(NetworkDriver):
         }
 
         try:
-            system_resource = tuple(self.api('/system/resource/print'))[0]
-        except IndexError:
+            system_resource = next(iter(self.api('/system/resource/print')))
+        except StopIteration:
             return environment
 
         total_memory = system_resource.get('total-memory')
@@ -341,9 +335,9 @@ class ROSDriver(NetworkDriver):
         return environment
 
     def get_facts(self):
-        resource = tuple(self.api('/system/resource/print'))[0]
-        identity = tuple(self.api('/system/identity/print'))[0]
-        routerboard = tuple(self.api('/system/routerboard/print'))[0]
+        resource = next(iter(self.api('/system/resource/print')))
+        identity = next(iter(self.api('/system/identity/print')))
+        routerboard = next(iter(self.api('/system/routerboard/print')))
         interfaces = tuple(self.api('/interface/print'))
         return {
             'uptime': float(utils.parse_duration(resource['uptime']).total_seconds()),
@@ -361,7 +355,7 @@ class ROSDriver(NetworkDriver):
     def get_config(self, retrieve='all', full=False, sanitized=False):
         configs = {'running': '', 'candidate': '', 'startup': ''}
         command = ["export", "terse"]
-        version = tuple(self.api('/system/package/update/print'))[0]
+        version = next(iter(self.api('/system/package/update/print')))
         version = version_parse(version['installed-version'])
         if full:
             command.append("verbose")
@@ -499,7 +493,7 @@ class ROSDriver(NetworkDriver):
 
     def get_ntp_servers(self):
         ntp_servers = {}
-        ntp_client_values = tuple(self.api('/system/ntp/client/print'))[0]
+        ntp_client_values = next(iter(self.api('/system/ntp/client/print')))
         fqdn_ntp_servers = filter(None, ntp_client_values.get('server-dns-names', '').split(','))
         for ntp_peer in fqdn_ntp_servers:
             ntp_servers[ntp_peer] = {}
@@ -519,7 +513,7 @@ class ROSDriver(NetworkDriver):
                 'mode': 'ro' if row.get('read-access') else 'rw',
             }
 
-        snmp_values = tuple(self.api('/snmp/print'))[0]
+        snmp_values = next(iter(self.api('/snmp/print')))
 
         return {
             'chassis_id': snmp_values['engine-id'],
@@ -549,7 +543,7 @@ class ROSDriver(NetworkDriver):
                 login_method=method,
                 ssl_wrapper=self.ssl_wrapper,
             )
-        except (TrapError, FatalError, socket.timeout, socket.error, MultiTrapError) as exc:
+        except (TimeoutError, OSError, TrapError, FatalError, MultiTrapError) as exc:
             raise ConnectionException(f"Could not connect to {self.hostname}:{self.port} - [{exc!r}]")
 
     def ping(
@@ -593,10 +587,10 @@ class ROSDriver(NetworkDriver):
                 }
             )
 
-        return dict(success=ping_results)
+        return {'success': ping_results}
 
     def get_vlans(self):
-        result = dict()
+        result = {}
         for row in self.api('/interface/bridge/vlan/print'):
             for vid in row['vlan-ids'].split(','):
                 untagged = filter(None, row['untagged'].split(','))
@@ -604,7 +598,7 @@ class ROSDriver(NetworkDriver):
                 ifs = set(chain(untagged, tagged))
                 result[vid] = {
                     "name": "",
-                    "interfaces": sorted(list(ifs)),
+                    "interfaces": sorted(ifs),
                 }
         return result
 
@@ -644,13 +638,17 @@ def convert_vrf_table(table):
     instances = {}
     for entry in table:
         ifaces = entry.get('interfaces').split(',')
-        ifaces_dict = dict((iface, {}) for iface in ifaces)
-        instances[entry['routing-mark']] = dict(
-            name=entry['routing-mark'],
-            type='L3VRF',
-            state=dict(route_distinguisher=entry.get('route-distinguisher')),
-            interfaces=dict(interface=ifaces_dict),
-        )
+        ifaces_dict = {iface: {} for iface in ifaces}
+        instances[entry['routing-mark']] = {
+            'name': entry['routing-mark'],
+            'type': 'L3VRF',
+            'state': {
+                'route_distinguisher': entry.get('route-distinguisher')
+            },
+            'interfaces': {
+                'interface': ifaces_dict
+            },
+        }
     return instances
 
 

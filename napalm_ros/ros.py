@@ -69,6 +69,11 @@ class ROSDriver(NetworkDriver):
         self.port = self.optional_args.get('port', 8729 if 'ssl_wrapper' in self.optional_args else 8728)
         self.ssh_port = self.optional_args.get('ssh_port', 22)
         self.paramiko_look_for_keys = self.optional_args.get('paramiko_look_for_keys', False)
+        # paramiko's allow_agent default (True) is preserved so SSH key/agent auth keeps
+        # working unchanged. If an SSH agent offers keys the device rejects, RouterOS can
+        # drop the session and get_config then fails with "No existing session"; set
+        # paramiko_allow_agent=False in optional_args to work around that.
+        self.paramiko_allow_agent = self.optional_args.get('paramiko_allow_agent', True)
         self.api = None
         self.ssh = None
         # Buffered candidate configuration (set by load_*_candidate, applied by commit_config).
@@ -76,7 +81,10 @@ class ROSDriver(NetworkDriver):
         self._config_replace = False
 
     def close(self):
-        self.api.close()
+        if self.api is not None:
+            self.api.close()
+        if self.ssh is not None:
+            self.ssh.close()
 
     def is_alive(self):
         '''No ping method is exposed from API'''
@@ -369,9 +377,13 @@ class ROSDriver(NetworkDriver):
             username=self.username,
             password=self.password,
             look_for_keys=self.paramiko_look_for_keys,
+            allow_agent=self.paramiko_allow_agent,
         )
-        _, stdout, _ = self.ssh.exec_command(" ".join(command))
-        config = stdout.read().decode().strip()
+        try:
+            _, stdout, _ = self.ssh.exec_command(" ".join(command))
+            config = stdout.read().decode().strip()
+        finally:
+            self.ssh.close()
         # remove date/time in 1st line
         config = re.sub(r"^# \S+ \S+ by (.+)$", r'# by \1', config, flags=re.MULTILINE)
         if retrieve in ("running", "all"):

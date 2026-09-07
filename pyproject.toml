@@ -24,7 +24,7 @@ napalm = "^4.0.0"
 librouteros = "^4.2.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.0"
+pytest = ">=7.4,<10.0"
 yapf = "^0.40.1"
 
 [tool.yapf]

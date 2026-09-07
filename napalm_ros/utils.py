@@ -15,7 +15,7 @@ def parse_duration(duration_str: str):
         'ms': 'milliseconds',
         'us': 'microseconds',
     }
-    tdargs = dict()
+    tdargs = {}
     nums = ''
     unit = ''
     for char in duration_str:
@@ -43,4 +43,4 @@ def iface_addresses(rows, ifname):
     '''
     found = (row['address'].split('/', 1) for row in rows if row['interface'] == ifname)
     pairs = ((cast_ip(address), int(prefix_length)) for address, prefix_length in found)
-    return dict((address, dict(prefix_length=length)) for address, length in pairs)
+    return {address: {'prefix_length': length} for address, length in pairs}

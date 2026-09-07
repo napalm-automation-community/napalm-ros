@@ -1,38 +1,44 @@
 """NAPALM driver for MikroTik RouterBoard OS (ROS)"""
-from __future__ import unicode_literals
 
-import socket
-import ssl
 import re
-from packaging.version import parse as version_parse
+import ssl
 from collections import defaultdict
 from itertools import chain
 
-import paramiko
 import librouteros.login
-from librouteros import connect
-from librouteros.exceptions import TrapError
-from librouteros.exceptions import FatalError
-from librouteros.exceptions import MultiTrapError
-from librouteros.query import (
-    Key,
-    And,
-)
-
-from netaddr import IPAddress, IPNetwork
-from netaddr.core import AddrFormatError
-
-import napalm.base.utils.string_parsers
 import napalm.base.constants as C
+import napalm.base.utils.string_parsers
+import paramiko
+from librouteros import connect
+from librouteros.exceptions import FatalError, MultiTrapError, TrapError
+from librouteros.query import (
+    And,
+    Key,
+)
 from napalm.base import NetworkDriver
+from napalm.base.exceptions import (
+    CommitConfirmException,
+    CommitError,
+    ConnectionException,
+    MergeConfigException,
+    ReplaceConfigException,
+)
 from napalm.base.helpers import ip as cast_ip
 from napalm.base.helpers import mac as cast_mac
-from napalm.base.exceptions import ConnectionException
+from netaddr import IPAddress, IPNetwork
+from netaddr.core import AddrFormatError
+from packaging.version import parse as version_parse
 
 from napalm_ros import (
-    utils,
     query,
+    utils,
 )
+
+# Names of the on-device artifacts used for rollback. A backup taken before a plain
+# commit lets rollback() restore the previous state; the commit-confirm job is a
+# device-side scheduler that restores its own backup unless confirm_commit() cancels it.
+ROLLBACK_SNAPSHOT = 'napalm-rollback'
+REVERT_JOB = 'napalm-commit-confirm'
 
 
 class ROSDriver(NetworkDriver):
@@ -65,6 +71,9 @@ class ROSDriver(NetworkDriver):
         self.paramiko_look_for_keys = self.optional_args.get('paramiko_look_for_keys', False)
         self.api = None
         self.ssh = None
+        # Buffered candidate configuration (set by load_*_candidate, applied by commit_config).
+        self._candidate = None
+        self._config_replace = False
 
     def close(self):
         self.api.close()
@@ -94,7 +103,7 @@ class ROSDriver(NetworkDriver):
         return result
 
     def get_bgp_neighbors(self):
-        bgp_neighbors = defaultdict(lambda: dict(peers={}))
+        bgp_neighbors = defaultdict(lambda: {'peers': {}})
         sent_prefixes = defaultdict(lambda: defaultdict(int))
 
         # Count prefixes advertised to each configured peer
@@ -148,8 +157,8 @@ class ROSDriver(NetworkDriver):
         if neighbor_address:
             peers.where(Key('remote-address') == neighbor_address)
         peers = tuple(peers)
-        peer_names = set(row['name'] for row in peers)
-        peers_instances = set(row['instance'] for row in peers)
+        peer_names = {row['name'] for row in peers}
+        peers_instances = {row['instance'] for row in peers}
         advertisements = self.api.path("/routing/bgp/advertisements").select(*query.bgp_advertisments)
         advertisements.where(Key('peer').In(*peer_names))
         advertisements = tuple(advertisements)
@@ -191,29 +200,29 @@ class ROSDriver(NetworkDriver):
         table = []
         for entry in self.api('/interface/bridge/host/print'):
             table.append(
-                dict(
-                    mac=entry['mac-address'],
-                    interface=entry['interface'],
-                    vlan=entry.get('vid', 1),     # Vlan id is not consistently set in the API
-                    static=not entry['dynamic'],
-                    active=not entry['invalid'],
-                    moves=0,
-                    last_move=0.0,
-                )
+                {
+                    'mac': entry['mac-address'],
+                    'interface': entry['interface'],
+                    'vlan': entry.get('vid', 1),  # Vlan id is not consistently set in the API
+                    'static': not entry['dynamic'],
+                    'active': not entry['invalid'],
+                    'moves': 0,
+                    'last_move': 0.0,
+                }
             )
 
         try:
             for entry in self.api('/interface/ethernet/switch/unicast-fdb/print'):
                 table.append(
-                    dict(
-                        mac=entry['mac-address'],
-                        interface=entry['port'],
-                        vlan=entry['vlan-id'],
-                        static=not entry['dynamic'],
-                        active=entry['active'],
-                        moves=0,
-                        last_move=0.0,
-                    )
+                    {
+                        'mac': entry['mac-address'],
+                        'interface': entry['port'],
+                        'vlan': entry['vlan-id'],
+                        'static': not entry['dynamic'],
+                        'active': entry['active'],
+                        'moves': 0,
+                        'last_move': 0.0,
+                    }
                 )
         except librouteros.exceptions.TrapError:
             # This only exists in the CRS1XX and CRS2XX switches.
@@ -240,10 +249,10 @@ class ROSDriver(NetworkDriver):
             query.Keys.interface,
         ):
             ifaces = LLDPInterfaces.fromApi(entry['interface'])
-            table[ifaces.child].append(dict(
-                hostname=entry['identity'],
-                port=entry.get('interface-name', ''),
-            ))
+            table[ifaces.child].append({
+                'hostname': entry['identity'],
+                'port': entry.get('interface-name', ''),
+            })
         return table
 
     def get_lldp_neighbors_detail(self, interface=""):
@@ -251,16 +260,16 @@ class ROSDriver(NetworkDriver):
         for entry in self.api.path('/ip/neighbor').select(*query.lldp_neighbors):
             ifaces = LLDPInterfaces.fromApi(entry['interface'])
             table[ifaces.child].append(
-                dict(
-                    parent_interface=ifaces.parent,
-                    remote_chassis_id=entry.get('mac-address', ''),
-                    remote_system_name=entry.get('identity', ''),
-                    remote_port=entry.get('interface-name', ''),
-                    remote_port_description='',
-                    remote_system_description=entry.get('system-description', ''),
-                    remote_system_capab=entry.get('system-caps', '').split(','),
-                    remote_system_enable_capab=entry.get('system-caps-enabled', '').split(','),
-                )
+                {
+                    'parent_interface': ifaces.parent,
+                    'remote_chassis_id': entry.get('mac-address', ''),
+                    'remote_system_name': entry.get('identity', ''),
+                    'remote_port': entry.get('interface-name', ''),
+                    'remote_port_description': '',
+                    'remote_system_description': entry.get('system-description', ''),
+                    'remote_system_capab': entry.get('system-caps', '').split(','),
+                    'remote_system_enable_capab': entry.get('system-caps-enabled', '').split(','),
+                }
             )
         # There is no way of sending query for specific interface since parent and child
         # interface is embedded within one field on MikroTik
@@ -297,8 +306,8 @@ class ROSDriver(NetworkDriver):
         }
 
         try:
-            system_resource = tuple(self.api('/system/resource/print'))[0]
-        except IndexError:
+            system_resource = next(iter(self.api('/system/resource/print')))
+        except StopIteration:
             return environment
 
         total_memory = system_resource.get('total-memory')
@@ -326,9 +335,9 @@ class ROSDriver(NetworkDriver):
         return environment
 
     def get_facts(self):
-        resource = tuple(self.api('/system/resource/print'))[0]
-        identity = tuple(self.api('/system/identity/print'))[0]
-        routerboard = tuple(self.api('/system/routerboard/print'))[0]
+        resource = next(iter(self.api('/system/resource/print')))
+        identity = next(iter(self.api('/system/identity/print')))
+        routerboard = next(iter(self.api('/system/routerboard/print')))
         interfaces = tuple(self.api('/interface/print'))
         return {
             'uptime': float(utils.parse_duration(resource['uptime']).total_seconds()),
@@ -346,7 +355,7 @@ class ROSDriver(NetworkDriver):
     def get_config(self, retrieve='all', full=False, sanitized=False):
         configs = {'running': '', 'candidate': '', 'startup': ''}
         command = ["export", "terse"]
-        version = tuple(self.api('/system/package/update/print'))[0]
+        version = next(iter(self.api('/system/package/update/print')))
         version = version_parse(version['installed-version'])
         if full:
             command.append("verbose")
@@ -368,6 +377,87 @@ class ROSDriver(NetworkDriver):
         if retrieve in ("running", "all"):
             configs['running'] = config
         return configs
+
+    # -- Configuration management (RouterOS 7.x, binary API only) --------------
+
+    def load_merge_candidate(self, filename=None, config=None):
+        self._candidate = self._read_candidate(filename, config)
+        self._config_replace = False
+
+    def load_replace_candidate(self, filename=None, config=None):
+        self._candidate = self._read_candidate(filename, config)
+        self._config_replace = True
+
+    @staticmethod
+    def _read_candidate(filename, config):
+        # A filename takes precedence over an inline config string (NAPALM contract).
+        if filename is not None:
+            with open(filename, 'r', encoding='utf-8') as handle:
+                return handle.read()
+        return config or ''
+
+    def compare_config(self):
+        if self._candidate is None:
+            return ''
+        return self.api.config().compare(self._candidate)
+
+    def discard_config(self):
+        self._candidate = None
+        self._config_replace = False
+
+    def commit_config(self, message='', revert_in=None):
+        if message:
+            raise NotImplementedError('Commit message not implemented for this platform')
+        if self._candidate is None:
+            raise CommitError('No candidate configuration loaded.')
+        # The NAPALM contract requires raising while a commit-confirm is still pending,
+        # rather than re-arming (which would corrupt the rollback baseline) or leaving a
+        # stale timer that later reboots the device.
+        if self.has_pending_commit():
+            raise CommitError('A commit confirm is already pending. Call confirm_commit or rollback first.')
+        if revert_in is not None and self._config_replace:
+            raise CommitConfirmException(
+                'Commit confirm (revert_in) is not supported with a replace on RouterOS, '
+                'because reset-configuration removes the scheduled rollback.'
+            )
+        cfg = self.api.config()
+        error = ReplaceConfigException if self._config_replace else MergeConfigException
+        try:
+            # Snapshot the pre-change state so rollback() can always restore the last
+            # commit. It must be persistent: a replace reboots, which would otherwise
+            # discard a backup stored on the RAM disk.
+            cfg.backup_save(ROLLBACK_SNAPSHOT, persistent=True)
+            if revert_in is not None:
+                # Device-side scheduler restores its backup unless confirm_commit() cancels it.
+                cfg.arm_rollback(revert_in, name=REVERT_JOB)
+        except (TrapError, MultiTrapError) as exc:
+            raise CommitError(f'Failed to prepare rollback: {exc}')
+        try:
+            if self._config_replace:
+                cfg.replace(self._candidate)
+            else:
+                cfg.apply(self._candidate)
+        except (TrapError, MultiTrapError) as exc:
+            raise error(str(exc))
+        self._candidate = None
+
+    def has_pending_commit(self):
+        return self.api.config().rollback_pending(name=REVERT_JOB)
+
+    def confirm_commit(self):
+        self.api.config().cancel_rollback(name=REVERT_JOB)
+
+    def rollback(self):
+        cfg = self.api.config()
+        # A pending commit-confirm is reverted by restoring its backup (this reboots the
+        # device); otherwise restore the snapshot taken by the last plain commit. Both
+        # backups are persistent (see commit_config).
+        if cfg.rollback_pending(name=REVERT_JOB):
+            cfg.backup_load(REVERT_JOB, persistent=True)
+        elif cfg.backup_exists(ROLLBACK_SNAPSHOT, persistent=True):
+            cfg.backup_load(ROLLBACK_SNAPSHOT, persistent=True)
+        else:
+            raise CommitError('No rollback snapshot available.')
 
     def get_interfaces(self):
         interfaces = {}
@@ -403,7 +493,7 @@ class ROSDriver(NetworkDriver):
 
     def get_ntp_servers(self):
         ntp_servers = {}
-        ntp_client_values = tuple(self.api('/system/ntp/client/print'))[0]
+        ntp_client_values = next(iter(self.api('/system/ntp/client/print')))
         fqdn_ntp_servers = filter(None, ntp_client_values.get('server-dns-names', '').split(','))
         for ntp_peer in fqdn_ntp_servers:
             ntp_servers[ntp_peer] = {}
@@ -423,7 +513,7 @@ class ROSDriver(NetworkDriver):
                 'mode': 'ro' if row.get('read-access') else 'rw',
             }
 
-        snmp_values = tuple(self.api('/snmp/print'))[0]
+        snmp_values = next(iter(self.api('/snmp/print')))
 
         return {
             'chassis_id': snmp_values['engine-id'],
@@ -453,7 +543,7 @@ class ROSDriver(NetworkDriver):
                 login_method=method,
                 ssl_wrapper=self.ssl_wrapper,
             )
-        except (TrapError, FatalError, socket.timeout, socket.error, MultiTrapError) as exc:
+        except (TimeoutError, OSError, TrapError, FatalError, MultiTrapError) as exc:
             raise ConnectionException(f"Could not connect to {self.hostname}:{self.port} - [{exc!r}]")
 
     def ping(
@@ -497,10 +587,10 @@ class ROSDriver(NetworkDriver):
                 }
             )
 
-        return dict(success=ping_results)
+        return {'success': ping_results}
 
     def get_vlans(self):
-        result = dict()
+        result = {}
         for row in self.api('/interface/bridge/vlan/print'):
             for vid in row['vlan-ids'].split(','):
                 untagged = filter(None, row['untagged'].split(','))
@@ -508,7 +598,7 @@ class ROSDriver(NetworkDriver):
                 ifs = set(chain(untagged, tagged))
                 result[vid] = {
                     "name": "",
-                    "interfaces": sorted(list(ifs)),
+                    "interfaces": sorted(ifs),
                 }
         return result
 
@@ -548,13 +638,17 @@ def convert_vrf_table(table):
     instances = {}
     for entry in table:
         ifaces = entry.get('interfaces').split(',')
-        ifaces_dict = dict((iface, {}) for iface in ifaces)
-        instances[entry['routing-mark']] = dict(
-            name=entry['routing-mark'],
-            type='L3VRF',
-            state=dict(route_distinguisher=entry.get('route-distinguisher')),
-            interfaces=dict(interface=ifaces_dict),
-        )
+        ifaces_dict = {iface: {} for iface in ifaces}
+        instances[entry['routing-mark']] = {
+            'name': entry['routing-mark'],
+            'type': 'L3VRF',
+            'state': {
+                'route_distinguisher': entry.get('route-distinguisher')
+            },
+            'interfaces': {
+                'interface': ifaces_dict
+            },
+        }
     return instances
 
 

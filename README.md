@@ -6,16 +6,20 @@
 
 As napalm-ros uses API, several caveats exist.
 
-* No safe mode (not exposed via API). There is no commit, rollback.
 * API is not versioned so things may break when routeros is upgraded.
+* RouterOS has no native, non-reboot commit/rollback and safe mode is not exposed via the API. Rollback is emulated with a device-side scheduler that restores a backup, so a rollback (or an expired commit-confirm) reverts by rebooting. See Configuration management.
 
 
-### Missing features.
+### Configuration management
 
-This driver does not implement any configuration management. Config management on mikrotik is different than on cisco, juniper etc. which provide
-`config replace`. You provide a plain text config file and replace running config with that. MikroTik does not have this. Some menu paths (eg. /ip
-address) do not have any order in which entries appear. Only one unique ip address can exist within a VRF. In some paths (eg. /ip firewall filter)
-order matter.
+Configuration management is supported on **RouterOS 7.x** and is implemented entirely over the binary API (via `librouteros`), so it needs no SSH access.
+
+* `get_config` / `compare_config` read the running configuration with `/export`.
+* `load_merge_candidate` stages a `.rsc` script that is applied with `/import`. `load_replace_candidate` stages a full configuration.
+* `commit_config` applies the candidate. Before a plain commit a backup is taken so `rollback` can restore it (by rebooting). `commit_config(revert_in=<seconds>)` arms a device-side scheduler that restores that backup unless `confirm_commit` is called in time (`has_pending_commit` reports whether one is armed). Because the timer lives on the device it survives a lost session or a lock-out.
+* A replace (`load_replace_candidate` + `commit_config`) uses `/system reset-configuration run-after-reset`, which wipes the configuration and reboots into the candidate. It is destructive, has no automatic rollback, and the candidate must be a complete, self-consistent configuration that restores management connectivity. Commit-confirm (`revert_in`) is not available with a replace.
+
+RouterOS configuration is imperative (an `/export` is a list of `add`/`set` actions, not declarative state) and ordering matters in some paths (e.g. `/ip firewall filter`) but not others (e.g. `/ip address`). `compare_config` is therefore a textual diff for review, not an executable patch.
 
 
 ### Implemented getters

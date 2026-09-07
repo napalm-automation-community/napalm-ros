@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.poetry]
 name = "napalm-ros"
-version="1.2.6"
+version="1.3.0"
 description="Network Automation and Programmability Abstraction Layer driver for Mikrotik ROS"
 readme = "README.md"
 authors = ["Łukasz Kostka <lukasz.g.kostka@gmail.com>"]

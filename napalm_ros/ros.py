@@ -103,6 +103,17 @@ class ROSDriver(NetworkDriver):
         return result
 
     def get_bgp_neighbors(self):
+        # RouterOS 7 replaced the old /routing/bgp/instance + /routing/bgp/peer menus
+        # with /routing/bgp/connection + /routing/bgp/session. Probe the old peer menu
+        # and dispatch to the matching implementation.
+        try:
+            peers = tuple(self.api("/routing/bgp/peer/print"))
+        except (TrapError, MultiTrapError):
+            return self._get_bgp_neighbors_new()
+        return self._get_bgp_neighbors_legacy(peers)
+
+    def _get_bgp_neighbors_legacy(self, peers):
+        # RouterOS 6 (and any 7.x build still exposing the old peer menu).
         bgp_neighbors = defaultdict(lambda: {'peers': {}})
         sent_prefixes = defaultdict(lambda: defaultdict(int))
 
@@ -114,8 +125,7 @@ class ROSDriver(NetworkDriver):
         for inst in self.api("/routing/bgp/instance/print"):
             instance_name = "global" if inst["name"] == "default" else inst["name"]
             bgp_neighbors[instance_name]["router_id"] = inst["router-id"]
-            inst_peers = find_rows(self.api("/routing/bgp/peer/print"), key="instance", value=inst["name"])
-            for peer in inst_peers:
+            for peer in find_rows(peers, key="instance", value=inst["name"]):
                 prefix_stats = {}
                 # MikroTik prefix counts are not per-AFI so attempt to query
                 # the routing table if more than one address family is present on a peer
@@ -134,7 +144,7 @@ class ROSDriver(NetworkDriver):
                             "received_prefixes": prefix_count,
                         }
                 else:
-                    family = "ipv4" if peer["address-families"] == "ip" else af
+                    family = "ipv4" if peer["address-families"] == "ip" else peer["address-families"]
                     prefix_stats[family] = {
                         "sent_prefixes": sent_prefixes.get(peer["name"], {}).get(family, 0),
                         "accepted_prefixes": peer.get("prefix-count", 0),
@@ -152,21 +162,82 @@ class ROSDriver(NetworkDriver):
                 }
         return dict(bgp_neighbors)
 
+    def _get_bgp_neighbors_new(self):
+        # RouterOS 7 new BGP: runtime neighbour state lives in /routing/bgp/session,
+        # configuration in /routing/bgp/connection. Starting with RouterOS 7.20 routing
+        # instances are explicit (a /routing/bgp/instance menu and a per-session/connection
+        # "instance" field); earlier 7.x auto-detects the instance by router-id and has no
+        # instance menu, so the connection carries "router-id" directly.
+        bgp_neighbors = defaultdict(lambda: {'peers': {}})
+        try:
+            instances = {inst["name"]: inst for inst in self.api("/routing/bgp/instance/print")}
+        except (TrapError, MultiTrapError):
+            instances = {}
+        sessions = {sess.get("remote.address"): sess for sess in self.api("/routing/bgp/session/print")}
+        for conn in self.api("/routing/bgp/connection/print"):
+            remote_address = conn.get("remote.address", "")
+            session = sessions.get(remote_address, {})
+            # NAPALM groups neighbours by VRF; RouterOS ties a connection to a
+            # routing-table ("main" is the global table). The router-id/AS come from
+            # the explicit instance on RouterOS >=7.20, or straight off the connection
+            # on earlier 7.x (which has no instance menu).
+            routing_table = conn.get("routing-table", "main")
+            vrf = "global" if routing_table == "main" else routing_table
+            instance = instances.get(conn.get("instance"), {})
+            router_id = instance.get("router-id") or conn.get("router-id") or session.get("local.id", "")
+            local_as = instance.get("as") or conn.get("as", 0)
+            bgp_neighbors[vrf]["router_id"] = router_id
+
+            # MikroTik reports one prefix count per session, not per address family;
+            # remote.afi lists the negotiated families (e.g. "ip,ipv6"). Sent-prefix
+            # counts are not exposed per neighbour here, so they are reported as -1.
+            families = session.get("remote.afi") or conn.get("address-families") or "ip"
+            prefix_count = session.get("prefix-count", 0)
+            prefix_stats = {}
+            for afi in families.split(","):
+                family = "ipv4" if afi == "ip" else afi
+                prefix_stats[family] = {
+                    "sent_prefixes": -1,
+                    "accepted_prefixes": prefix_count,
+                    "received_prefixes": prefix_count,
+                }
+            bgp_neighbors[vrf]["peers"][remote_address or conn.get("name", "")] = {
+                "local_as": local_as,
+                "remote_as": conn.get("remote.as", session.get("remote.as", 0)),
+                "remote_id": session.get("remote.id", ""),
+                "is_up": session.get("established", False) is True,
+                "is_enabled": not conn.get("disabled", False),
+                "description": conn.get("name", ""),
+                "uptime": int(utils.parse_duration(session.get("uptime", "0s")).total_seconds()),
+                "address_family": prefix_stats,
+            }
+        return dict(bgp_neighbors)
+
     def get_bgp_neighbors_detail(self, neighbor_address=""):
         peers = self.api.path("/routing/bgp/peer").select(*query.bgp_peers)
         if neighbor_address:
             peers.where(Key('remote-address') == neighbor_address)
-        peers = tuple(peers)
-        peer_names = {row['name'] for row in peers}
-        peers_instances = {row['instance'] for row in peers}
+        try:
+            peers = tuple(peers)
+        except (TrapError, MultiTrapError):
+            # RouterOS 7 has no /routing/bgp/peer menu (see get_bgp_neighbors).
+            return self._get_bgp_neighbors_detail_new(neighbor_address)
+        return self._get_bgp_neighbors_detail_legacy(peers)
+
+    def _get_bgp_neighbors_detail_legacy(self, peers):
+        # A proplist print can return sparse rows, so read fields defensively.
+        peer_names = {row['name'] for row in peers if 'name' in row}
+        peers_instances = {row['instance'] for row in peers if 'instance' in row}
         advertisements = self.api.path("/routing/bgp/advertisements").select(*query.bgp_advertisments)
-        advertisements.where(Key('peer').In(*peer_names))
+        if peer_names:
+            advertisements.where(Key('peer').In(*peer_names))
         advertisements = tuple(advertisements)
         instances = self.api.path('/routing/bgp/instance').select(*query.bgp_instances)
-        instances.where(And(
-            Key('name').In(*peers_instances),
-            query.not_disabled,
-        ))
+        if peers_instances:
+            instances.where(And(
+                Key('name').In(*peers_instances),
+                query.not_disabled,
+            ))
 
         # Count prefixes advertised to each peer
         sent_prefixes = defaultdict(int)
@@ -180,8 +251,30 @@ class ROSDriver(NetworkDriver):
 
             for peer in inst_peers:
                 peer_details = bgp_peer_detail(peer, inst, sent_prefixes)
-                bgp_neighbors[instance_name][peer["remote-as"]].append(peer_details)
+                bgp_neighbors[instance_name][peer.get("remote-as", 0)].append(peer_details)
 
+        return bgp_neighbors
+
+    def _get_bgp_neighbors_detail_new(self, neighbor_address=""):
+        # RouterOS 7 new BGP: per-neighbour detail comes from /routing/bgp/session
+        # (runtime) joined with /routing/bgp/connection (config). See get_bgp_neighbors
+        # for the >=7.20 vs earlier instance handling.
+        try:
+            instances = {inst["name"]: inst for inst in self.api("/routing/bgp/instance/print")}
+        except (TrapError, MultiTrapError):
+            instances = {}
+        sessions = {sess.get("remote.address"): sess for sess in self.api("/routing/bgp/session/print")}
+        bgp_neighbors = defaultdict(lambda: defaultdict(list))
+        for conn in self.api("/routing/bgp/connection/print"):
+            remote_address = conn.get("remote.address", "")
+            if neighbor_address and remote_address != neighbor_address:
+                continue
+            session = sessions.get(remote_address, {})
+            instance = instances.get(conn.get("instance"), {})
+            routing_table = conn.get("routing-table", "main")
+            vrf = "global" if routing_table == "main" else routing_table
+            remote_as = conn.get("remote.as", session.get("remote.as", 0))
+            bgp_neighbors[vrf][remote_as].append(bgp_session_detail(conn, session, instance))
         return bgp_neighbors
 
     def get_arp_table(self, vrf=""):
@@ -670,20 +763,20 @@ class LLDPInterfaces:
 def bgp_peer_detail(peer, inst, sent_prefixes):
     return {
         "up": peer.get("established", False),
-        "local_as": inst["as"],
-        "remote_as": peer["remote-as"],
-        "router_id": inst["router-id"],
+        "local_as": inst.get("as", 0),
+        "remote_as": peer.get("remote-as", 0),
+        "router_id": inst.get("router-id", ""),
         "local_address": peer.get("local-address", False),
         "local_address_configured": bool(peer.get("local-address", False)),
         "local_port": 179,
-        "routing_table": inst["routing-table"],
-        "remote_address": peer["remote-address"],
+        "routing_table": inst.get("routing-table", ""),
+        "remote_address": peer.get("remote-address", ""),
         "remote_port": 179,
-        "multihop": peer["multihop"],
+        "multihop": peer.get("multihop", False),
         "multipath": False,
-        "remove_private_as": peer["remove-private-as"],
-        "import_policy": peer["in-filter"],
-        "export_policy": peer["out-filter"],
+        "remove_private_as": peer.get("remove-private-as", False),
+        "import_policy": peer.get("in-filter", ""),
+        "export_policy": peer.get("out-filter", ""),
         "input_messages": peer.get("updates-received", 0) + peer.get("withdrawn-received", 0),
         "output_messages": peer.get("updates-sent", 0) + peer.get("withdrawn-sent", 0),
         "input_updates": peer.get("updates-received", 0),
@@ -702,6 +795,48 @@ def bgp_peer_detail(peer, inst, sent_prefixes):
         "received_prefix_count": peer.get("prefix-count", 0),
         "accepted_prefix_count": peer.get("prefix-count", 0),
         "suppressed_prefix_count": 0,
-        "advertised_prefix_count": sent_prefixes.get(peer["name"], 0),
+        "advertised_prefix_count": sent_prefixes.get(peer.get("name", ""), 0),
+        "flap_count": 0,
+    }
+
+
+def bgp_session_detail(conn, session, instance):
+    up = session.get("established", False) is True
+    capabilities = session.get("remote.capabilities", "")
+    return {
+        "up": up,
+        "local_as": instance.get("as") or conn.get("as", 0),
+        "remote_as": conn.get("remote.as", session.get("remote.as", 0)),
+        "router_id": instance.get("router-id") or conn.get("router-id") or session.get("local.id", ""),
+        "local_address": session.get("local.address") or conn.get("local.address", ""),
+        "local_address_configured": bool(conn.get("local.address")),
+        "local_port": 179,
+        "routing_table": conn.get("routing-table", ""),
+        "remote_address": conn.get("remote.address", session.get("remote.address", "")),
+        "remote_port": 179,
+        "multihop": bool(conn.get("multihop", False)),
+        "multipath": False,
+        "remove_private_as": False,
+        "import_policy": conn.get("input.filter", ""),
+        "export_policy": conn.get("output.filter", ""),
+        "input_messages": session.get("remote.messages", 0),
+        "output_messages": session.get("local.messages", 0),
+        "input_updates": 0,
+        "output_updates": 0,
+        "messages_queued_out": 0,
+        "connection_state": "Established" if up else "",
+        "previous_connection_state": "",
+        "last_event": "",
+        "suppress_4byte_as": "as4" not in capabilities,
+        "local_as_prepend": False,
+        "holdtime": int(utils.parse_duration(session.get("hold-time", "3m")).total_seconds()),
+        "configured_holdtime": int(utils.parse_duration(session.get("hold-time", "3m")).total_seconds()),
+        "keepalive": int(utils.parse_duration(session.get("keepalive-time", "1m")).total_seconds()),
+        "configured_keepalive": int(utils.parse_duration(session.get("keepalive-time", "1m")).total_seconds()),
+        "active_prefix_count": session.get("prefix-count", 0),
+        "received_prefix_count": session.get("prefix-count", 0),
+        "accepted_prefix_count": session.get("prefix-count", 0),
+        "suppressed_prefix_count": 0,
+        "advertised_prefix_count": -1,
         "flap_count": 0,
     }

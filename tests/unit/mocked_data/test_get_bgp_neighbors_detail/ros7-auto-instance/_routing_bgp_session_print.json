@@ -1,0 +1,23 @@
+{
+    "data": [
+        {
+            ".id": "*2800001",
+            "name": "c1-1",
+            "established": true,
+            "remote.address": "10.10.10.1",
+            "remote.as": 65001,
+            "remote.id": "10.10.10.1",
+            "remote.afi": "ip",
+            "local.address": "10.10.10.2",
+            "local.as": 65002,
+            "local.id": "10.10.10.2",
+            "prefix-count": 2,
+            "uptime": "5m10s",
+            "hold-time": "3m",
+            "keepalive-time": "1m",
+            "remote.capabilities": "mp,rr,gr,as4",
+            "remote.messages": 3,
+            "local.messages": 3
+        }
+    ]
+}

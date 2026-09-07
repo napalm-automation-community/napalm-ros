@@ -1,0 +1,19 @@
+{
+    "data": [
+        {
+            ".id": "*2800001",
+            "name": "c1-1",
+            "instance": "i1",
+            "established": true,
+            "remote.address": "10.10.10.2",
+            "remote.as": 65002,
+            "remote.id": "10.10.10.2",
+            "remote.afi": "ip",
+            "local.address": "10.10.10.1",
+            "local.as": 65001,
+            "local.id": "10.10.10.1",
+            "prefix-count": 3,
+            "uptime": "1h1m1s"
+        }
+    ]
+}

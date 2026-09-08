@@ -8,6 +8,7 @@ As napalm-ros uses API, several caveats exist.
 
 * API is not versioned so things may break when routeros is upgraded.
 * RouterOS has no native, non-reboot commit/rollback and safe mode is not exposed via the API. Rollback is emulated with a device-side scheduler that restores a backup, so a rollback (or an expired commit-confirm) reverts by rebooting. See Configuration management.
+* `get_config` reads the running configuration over the binary API on RouterOS 7 (no SSH). On RouterOS 6 it falls back to SSH (paramiko), where paramiko offers keys from a running SSH agent by default; if the agent offers a key the device rejects, RouterOS may drop the session and `get_config` then fails with `No existing session`. Pass `optional_args={'paramiko_allow_agent': False}` to authenticate with the password only (SSH agent/key auth is otherwise left enabled); `paramiko_look_for_keys` (default `False`) similarly controls on-disk key lookup.
 
 
 ### Configuration management

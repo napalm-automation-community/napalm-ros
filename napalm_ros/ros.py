@@ -10,7 +10,7 @@ import napalm.base.constants as C
 import napalm.base.utils.string_parsers
 import paramiko
 from librouteros import connect
-from librouteros.exceptions import FatalError, MultiTrapError, TrapError
+from librouteros.exceptions import ConnectionClosed, FatalError, MultiTrapError, TrapError
 from librouteros.query import (
     And,
     Key,
@@ -79,7 +79,14 @@ class ROSDriver(NetworkDriver):
         self.api.close()
 
     def is_alive(self):
-        '''No ping method is exposed from API'''
+        # The binary API exposes no ping/keepalive, so probe with a cheap read to tell a
+        # dropped or rebooted session apart from a live one.
+        if self.api is None:
+            return {'is_alive': False}
+        try:
+            next(iter(self.api('/system/identity/print')))
+        except (ConnectionClosed, FatalError, OSError):
+            return {'is_alive': False}
         return {'is_alive': True}
 
     def get_interfaces_counters(self):

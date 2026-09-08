@@ -13,7 +13,7 @@ from napalm.base.exceptions import (
     MergeConfigException,
     ReplaceConfigException,
 )
-from librouteros.exceptions import TrapError
+from librouteros.exceptions import ConnectionClosed, TrapError
 
 from napalm_ros.ros import ROLLBACK_SNAPSHOT, REVERT_JOB, ROSDriver
 
@@ -212,3 +212,20 @@ def test_rollback_without_snapshot_raises():
     with pytest.raises(CommitError):
         driver.rollback()
     cfg.backup_load.assert_not_called()
+
+
+def test_is_alive_true_when_api_responds():
+    driver, _ = make_driver()
+    driver.api.return_value = iter([{'name': 'MikroTik'}])
+    assert driver.is_alive() == {'is_alive': True}
+
+
+def test_is_alive_false_on_dropped_connection():
+    driver, _ = make_driver()
+    driver.api.side_effect = ConnectionClosed('connection dropped')
+    assert driver.is_alive() == {'is_alive': False}
+
+
+def test_is_alive_false_when_not_opened():
+    driver = ROSDriver('host', 'user', 'pass')  # open() never called, so api is None
+    assert driver.is_alive() == {'is_alive': False}

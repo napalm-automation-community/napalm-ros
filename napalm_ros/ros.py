@@ -69,6 +69,10 @@ class ROSDriver(NetworkDriver):
         self.port = self.optional_args.get('port', 8729 if 'ssl_wrapper' in self.optional_args else 8728)
         self.ssh_port = self.optional_args.get('ssh_port', 22)
         self.paramiko_look_for_keys = self.optional_args.get('paramiko_look_for_keys', False)
+        # commit_config dry-runs the candidate before applying it, where RouterOS supports
+        # it (7.16+), so a syntax error is caught before anything is touched. Set
+        # validate_before_commit=False in optional_args to skip that pre-flight.
+        self.validate_before_commit = self.optional_args.get('validate_before_commit', True)
         self.api = None
         self.ssh = None
         # Buffered candidate configuration (set by load_*_candidate, applied by commit_config).
@@ -405,6 +409,9 @@ class ROSDriver(NetworkDriver):
         self._candidate = None
         self._config_replace = False
 
+    def _ros_version(self):
+        return version_parse(next(iter(self.api('/system/package/update/print')))['installed-version'])
+
     def commit_config(self, message='', revert_in=None):
         if message:
             raise NotImplementedError('Commit message not implemented for this platform')
@@ -422,6 +429,17 @@ class ROSDriver(NetworkDriver):
             )
         cfg = self.api.config()
         error = ReplaceConfigException if self._config_replace else MergeConfigException
+        # Pre-flight: dry-run the candidate so a syntax/parse error is caught before we
+        # snapshot and apply, rather than after the device has already been partly
+        # changed. /import dry-run is RouterOS 7.16+, so this is gated to fail closed:
+        # on anything older (where the flag does not exist) validation is skipped and we
+        # rely on arm_rollback instead. dry-run does not catch a valid command that fails
+        # on runtime state, so it narrows the failure window without replacing rollback.
+        if self.validate_before_commit and self._ros_version().release >= (7, 16):
+            try:
+                cfg.validate(self._candidate)
+            except (TrapError, MultiTrapError) as exc:
+                raise error(f'Candidate configuration failed dry-run validation: {exc}')
         try:
             # Snapshot the pre-change state so rollback() can always restore the last
             # commit. It must be persistent: a replace reboots, which would otherwise

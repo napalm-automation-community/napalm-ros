@@ -14,13 +14,17 @@ from napalm.base.exceptions import (
     ReplaceConfigException,
 )
 from librouteros.exceptions import TrapError
+from packaging.version import parse as version_parse
 
 from napalm_ros.ros import ROLLBACK_SNAPSHOT, REVERT_JOB, ROSDriver
 
 
-def make_driver():
+def make_driver(version='7.11.2'):
     driver = ROSDriver('host', 'user', 'pass')
     driver.api = MagicMock()
+    # Pin the reported RouterOS version so the commit dry-run gate is deterministic;
+    # default below 7.16 so most tests exercise the no-validate path.
+    driver._ros_version = MagicMock(return_value=version_parse(version))
     cfg = MagicMock()
     cfg.rollback_pending.return_value = False  # no commit-confirm pending by default
     driver.api.config.return_value = cfg
@@ -195,6 +199,55 @@ def test_commit_replace_error_wrapped_as_replace_exception():
     cfg.replace.side_effect = TrapError(message='boom')
     with pytest.raises(ReplaceConfigException):
         driver.commit_config()
+
+
+def test_commit_dry_run_validates_before_apply_on_7_16():
+    driver, cfg = make_driver(version='7.16.1')
+    driver._candidate = 'cand'
+    driver.commit_config()
+    cfg.validate.assert_called_once_with('cand')
+    # validation runs before anything on the device is touched
+    order = [c[0] for c in cfg.mock_calls]
+    assert order.index('validate') < order.index('backup_save')
+    assert order.index('validate') < order.index('apply')
+
+
+def test_commit_dry_run_failure_aborts_before_snapshot():
+    driver, cfg = make_driver(version='7.16.1')
+    driver._candidate = 'cand'
+    cfg.validate.side_effect = TrapError(message='syntax error')
+    with pytest.raises(MergeConfigException):
+        driver.commit_config()
+    # nothing on the device is touched when the dry-run rejects the candidate
+    cfg.backup_save.assert_not_called()
+    cfg.apply.assert_not_called()
+
+
+def test_commit_dry_run_failure_on_replace_raises_replace_exception():
+    driver, cfg = make_driver(version='7.16.1')
+    driver._candidate = 'cand'
+    driver._config_replace = True
+    cfg.validate.side_effect = TrapError(message='syntax error')
+    with pytest.raises(ReplaceConfigException):
+        driver.commit_config()
+    cfg.replace.assert_not_called()
+
+
+def test_commit_skips_dry_run_below_7_16():
+    driver, cfg = make_driver(version='7.15.3')
+    driver._candidate = 'cand'
+    driver.commit_config()
+    cfg.validate.assert_not_called()
+    cfg.apply.assert_called_once_with('cand')
+
+
+def test_commit_skips_dry_run_when_disabled():
+    driver, cfg = make_driver(version='7.16.1')
+    driver.validate_before_commit = False
+    driver._candidate = 'cand'
+    driver.commit_config()
+    cfg.validate.assert_not_called()
+    cfg.apply.assert_called_once_with('cand')
 
 
 def test_has_pending_commit_delegates():

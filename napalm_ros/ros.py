@@ -507,7 +507,7 @@ class ROSDriver(NetworkDriver):
         secondary_ntp = ntp_client_values.get('secondary-ntp')
         if primary_ntp and primary_ntp != '0.0.0.0':
             ntp_servers[primary_ntp] = {}
-        if secondary_ntp != '0.0.0.0':
+        if secondary_ntp and secondary_ntp != '0.0.0.0':
             ntp_servers[secondary_ntp] = {}
         return ntp_servers
 

@@ -10,6 +10,7 @@ import napalm.base.constants as C
 import napalm.base.utils.string_parsers
 import paramiko
 from librouteros import connect
+from librouteros.config import compare as config_compare
 from librouteros.exceptions import FatalError, MultiTrapError, TrapError
 from librouteros.query import (
     And,
@@ -399,7 +400,13 @@ class ROSDriver(NetworkDriver):
     def compare_config(self):
         if self._candidate is None:
             return ''
-        return self.api.config().compare(self._candidate)
+        # Fetch the running config the same version-aware way get_config does (API on
+        # RouterOS 7.13+, SSH below), then diff it against the candidate. The API config
+        # engine cannot chunk-read a large export below 7.13, and unlike get_config it has
+        # no SSH fallback, so calling it directly would raise there; routing through
+        # get_config makes compare_config work across every supported RouterOS version.
+        running = self.get_config(retrieve='running')['running']
+        return config_compare(running, self._candidate)
 
     def discard_config(self):
         self._candidate = None

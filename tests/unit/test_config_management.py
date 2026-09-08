@@ -55,12 +55,16 @@ def test_read_candidate_neither():
     assert ROSDriver._read_candidate(None, None) == ''
 
 
-def test_compare_config_delegates_to_engine():
-    driver, cfg = make_driver()
-    driver._candidate = 'cand'
-    cfg.compare.return_value = 'the-diff'
-    assert driver.compare_config() == 'the-diff'
-    cfg.compare.assert_called_once_with('cand')
+def test_compare_config_diffs_running_against_candidate():
+    driver, _ = make_driver()
+    driver._candidate = '/ip address add address=2.2.2.2/24 interface=ether1\n'
+    # get_config is the version-aware read (API on 7.13+, SSH below); compare_config
+    # diffs its output against the candidate rather than calling the API-only engine,
+    # so it works on RouterOS older than 7.13.
+    driver.get_config = MagicMock(return_value={'running': '/ip address add address=1.1.1.1/24 interface=ether1\n'})
+    diff = driver.compare_config()
+    driver.get_config.assert_called_once_with(retrieve='running')
+    assert '1.1.1.1' in diff and '2.2.2.2' in diff
 
 
 def test_compare_config_without_candidate_is_empty():

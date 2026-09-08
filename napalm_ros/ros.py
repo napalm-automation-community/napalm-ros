@@ -449,6 +449,16 @@ class ROSDriver(NetworkDriver):
                 # Device-side scheduler restores its backup unless confirm_commit() cancels it.
                 cfg.arm_rollback(revert_in, name=REVERT_JOB)
         except (TrapError, MultiTrapError) as exc:
+            # RouterOS 7.17+ can gate /system/scheduler behind device-mode; when it is off,
+            # arm_rollback's scheduler add is refused ("not allowed by device-mode") and
+            # commit-confirm is simply unavailable. The candidate is not applied either way;
+            # point the operator at the fix rather than leaving a bare trap message.
+            if revert_in is not None and 'device-mode' in str(exc):
+                raise CommitError(
+                    f'Cannot arm commit-confirm: {exc}. The scheduler is disabled in this '
+                    "device's device-mode (RouterOS 7.17+); enable it with "
+                    "'/system/device-mode/update scheduler=yes' or commit without revert_in."
+                )
             raise CommitError(f'Failed to prepare rollback: {exc}')
         try:
             if self._config_replace:

@@ -126,6 +126,30 @@ def test_commit_rollback_prep_failure_raises_commit_error():
     cfg.apply.assert_not_called()
 
 
+def test_commit_revert_in_blocked_by_device_mode_is_actionable():
+    # RouterOS 7.17+ can gate the scheduler behind device-mode; arm_rollback's scheduler
+    # add is then refused. The error should name the fix, and the candidate must not apply.
+    driver, cfg = make_driver()
+    driver._candidate = 'cand'
+    cfg.arm_rollback.side_effect = TrapError(message='not allowed by device-mode')
+    with pytest.raises(CommitError) as excinfo:
+        driver.commit_config(revert_in=120)
+    msg = str(excinfo.value)
+    assert 'device-mode' in msg
+    assert 'scheduler=yes' in msg
+    cfg.apply.assert_not_called()
+
+
+def test_commit_revert_in_other_arm_failure_keeps_generic_error():
+    driver, cfg = make_driver()
+    driver._candidate = 'cand'
+    cfg.arm_rollback.side_effect = TrapError(message='no space')
+    with pytest.raises(CommitError) as excinfo:
+        driver.commit_config(revert_in=120)
+    assert 'Failed to prepare rollback' in str(excinfo.value)
+    cfg.apply.assert_not_called()
+
+
 def test_commit_merge_revert_in_arms_scheduler():
     driver, cfg = make_driver()
     driver._candidate = 'cand'

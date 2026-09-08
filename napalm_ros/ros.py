@@ -315,16 +315,22 @@ class ROSDriver(NetworkDriver):
         environment['memory'] = {'available_ram': total_memory, 'used_ram': int(total_memory - free_memory)}
 
         for entry in self.api('/system/health/print'):
-            if 'temperature' in entry['name']:
-                name = entry['name'].replace('-temperature', '')
+            # RouterOS also returns a health-monitoring config row (e.g.
+            # {'state': 'disabled'}) that has no sensor name; only name/value rows are
+            # sensor readings. Skip anything without a name.
+            name_field = entry.get('name')
+            if not name_field:
+                continue
+            if 'temperature' in name_field:
+                name = name_field.replace('-temperature', '')
                 temperature = float(entry['value'])
                 environment['temperature'][name] = {'temperature': temperature, 'is_alert': False, 'is_critical': False}
-            elif 'speed' in entry['name']:
-                name = entry['name'].replace('-speed', '')
+            elif 'speed' in name_field:
+                name = name_field.replace('-speed', '')
                 status = int(entry['value']) > 50
                 environment['fans'][name] = {'status': status}
-            elif 'state' in entry['name']:
-                name = entry['name'].replace('-state', '')
+            elif 'state' in name_field:
+                name = name_field.replace('-state', '')
                 status = entry['value'] == 'ok'
                 environment['power'][name] = {'status': status, 'capacity': 0.0, 'output': 0.0}
 

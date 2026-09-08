@@ -1,0 +1,14 @@
+{
+    "fans": {},
+    "temperature": {},
+    "power": {},
+    "cpu": {
+        "cpu0": {
+            "%usage": 3.0
+        }
+    },
+    "memory": {
+        "available_ram": 1000000000,
+        "used_ram": 600000000
+    }
+}

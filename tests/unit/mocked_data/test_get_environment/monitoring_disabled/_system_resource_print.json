@@ -1,0 +1,12 @@
+{
+    "data":
+    [
+    {
+        "free-memory": 400000000,
+        "total-memory": 1000000000,
+        "cpu": "x86_64",
+        "board-name": "CHR",
+        "platform": "MikroTik"
+    }
+    ]
+}

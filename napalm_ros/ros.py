@@ -10,7 +10,7 @@ import napalm.base.constants as C
 import napalm.base.utils.string_parsers
 import paramiko
 from librouteros import connect
-from librouteros.exceptions import FatalError, MultiTrapError, TrapError
+from librouteros.exceptions import ConnectionClosed, FatalError, MultiTrapError, TrapError
 from librouteros.query import (
     And,
     Key,
@@ -69,6 +69,11 @@ class ROSDriver(NetworkDriver):
         self.port = self.optional_args.get('port', 8729 if 'ssl_wrapper' in self.optional_args else 8728)
         self.ssh_port = self.optional_args.get('ssh_port', 22)
         self.paramiko_look_for_keys = self.optional_args.get('paramiko_look_for_keys', False)
+        # paramiko's allow_agent default (True) is preserved so SSH key/agent auth keeps
+        # working unchanged. If an SSH agent offers keys the device rejects, RouterOS can
+        # drop the session and get_config then fails with "No existing session"; set
+        # paramiko_allow_agent=False in optional_args to work around that.
+        self.paramiko_allow_agent = self.optional_args.get('paramiko_allow_agent', True)
         self.api = None
         self.ssh = None
         # Buffered candidate configuration (set by load_*_candidate, applied by commit_config).
@@ -76,10 +81,20 @@ class ROSDriver(NetworkDriver):
         self._config_replace = False
 
     def close(self):
-        self.api.close()
+        if self.api is not None:
+            self.api.close()
+        if self.ssh is not None:
+            self.ssh.close()
 
     def is_alive(self):
-        '''No ping method is exposed from API'''
+        # The binary API exposes no ping/keepalive, so probe with a cheap read to tell a
+        # dropped or rebooted session apart from a live one.
+        if self.api is None:
+            return {'is_alive': False}
+        try:
+            next(iter(self.api('/system/identity/print')))
+        except (ConnectionClosed, FatalError, OSError):
+            return {'is_alive': False}
         return {'is_alive': True}
 
     def get_interfaces_counters(self):
@@ -354,16 +369,22 @@ class ROSDriver(NetworkDriver):
         environment['memory'] = {'available_ram': total_memory, 'used_ram': int(total_memory - free_memory)}
 
         for entry in self.api('/system/health/print'):
-            if 'temperature' in entry['name']:
-                name = entry['name'].replace('-temperature', '')
+            # RouterOS also returns a health-monitoring config row (e.g.
+            # {'state': 'disabled'}) that has no sensor name; only name/value rows are
+            # sensor readings. Skip anything without a name.
+            name_field = entry.get('name')
+            if not name_field:
+                continue
+            if 'temperature' in name_field:
+                name = name_field.replace('-temperature', '')
                 temperature = float(entry['value'])
                 environment['temperature'][name] = {'temperature': temperature, 'is_alert': False, 'is_critical': False}
-            elif 'speed' in entry['name']:
-                name = entry['name'].replace('-speed', '')
+            elif 'speed' in name_field:
+                name = name_field.replace('-speed', '')
                 status = int(entry['value']) > 50
                 environment['fans'][name] = {'status': status}
-            elif 'state' in entry['name']:
-                name = entry['name'].replace('-state', '')
+            elif 'state' in name_field:
+                name = name_field.replace('-state', '')
                 status = entry['value'] == 'ok'
                 environment['power'][name] = {'status': status, 'capacity': 0.0, 'output': 0.0}
 
@@ -393,9 +414,28 @@ class ROSDriver(NetworkDriver):
 
     def get_config(self, retrieve='all', full=False, sanitized=False):
         configs = {'running': '', 'candidate': '', 'startup': ''}
+        if retrieve not in ('running', 'all'):
+            return configs
+        version = version_parse(next(iter(self.api('/system/package/update/print')))['installed-version'])
+        # The API config engine reads the export back from a file; a configuration larger
+        # than the API's inline limit (~50 KB) needs /file/read chunking, which requires
+        # RouterOS 7.13+. Below that (older 7.x and RouterOS 6) read it over SSH instead,
+        # which streams the whole export with no size limit.
+        if version.release >= (7, 13):
+            # show-sensitive is the RouterOS 7 way to include secrets (hidden by default).
+            config = self.api.config().export(terse=True, verbose=full, show_sensitive=not sanitized).strip()
+        else:
+            config = self._get_running_config_ssh(version, full=full, sanitized=sanitized)
+        # remove date/time in 1st line
+        config = re.sub(r"^# \S+ \S+ by (.+)$", r'# by \1', config, flags=re.MULTILINE)
+        configs['running'] = config
+        return configs
+
+    def _get_running_config_ssh(self, version, full=False, sanitized=False):
+        # SSH fallback for RouterOS 6 and 7.x older than 7.13 (see get_config). RouterOS 7
+        # hides secrets by default (show-sensitive reveals them); RouterOS 6 shows them by
+        # default (hide-sensitive redacts them).
         command = ["export", "terse"]
-        version = next(iter(self.api('/system/package/update/print')))
-        version = version_parse(version['installed-version'])
         if full:
             command.append("verbose")
         if version.major >= 7 and not sanitized:
@@ -408,14 +448,13 @@ class ROSDriver(NetworkDriver):
             username=self.username,
             password=self.password,
             look_for_keys=self.paramiko_look_for_keys,
+            allow_agent=self.paramiko_allow_agent,
         )
-        _, stdout, _ = self.ssh.exec_command(" ".join(command))
-        config = stdout.read().decode().strip()
-        # remove date/time in 1st line
-        config = re.sub(r"^# \S+ \S+ by (.+)$", r'# by \1', config, flags=re.MULTILINE)
-        if retrieve in ("running", "all"):
-            configs['running'] = config
-        return configs
+        try:
+            _, stdout, _ = self.ssh.exec_command(" ".join(command))
+            return stdout.read().decode().strip()
+        finally:
+            self.ssh.close()
 
     # -- Configuration management (RouterOS 7.x, binary API only) --------------
 
@@ -540,7 +579,7 @@ class ROSDriver(NetworkDriver):
         secondary_ntp = ntp_client_values.get('secondary-ntp')
         if primary_ntp and primary_ntp != '0.0.0.0':
             ntp_servers[primary_ntp] = {}
-        if secondary_ntp != '0.0.0.0':
+        if secondary_ntp and secondary_ntp != '0.0.0.0':
             ntp_servers[secondary_ntp] = {}
         return ntp_servers
 

@@ -168,6 +168,26 @@ def test_commit_merge_error_wrapped_as_merge_exception():
         driver.commit_config()
 
 
+def test_commit_failure_with_revert_in_cancels_armed_rollback():
+    # If the apply fails after arming a revert, the armed auto-revert is cancelled so the
+    # device does not reboot out from under the operator and has_pending_commit is cleared.
+    driver, cfg = make_driver()
+    driver._candidate = 'cand'
+    cfg.apply.side_effect = TrapError(message='syntax error')
+    with pytest.raises(MergeConfigException):
+        driver.commit_config(revert_in=120)
+    cfg.cancel_rollback.assert_called_once_with(name=REVERT_JOB)
+
+
+def test_commit_failure_without_revert_in_has_no_rollback_to_cancel():
+    driver, cfg = make_driver()
+    driver._candidate = 'cand'
+    cfg.apply.side_effect = TrapError(message='syntax error')
+    with pytest.raises(MergeConfigException):
+        driver.commit_config()
+    cfg.cancel_rollback.assert_not_called()
+
+
 def test_commit_replace_error_wrapped_as_replace_exception():
     driver, cfg = make_driver()
     driver._candidate = 'cand'

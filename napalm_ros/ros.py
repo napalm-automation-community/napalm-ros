@@ -438,6 +438,16 @@ class ROSDriver(NetworkDriver):
             else:
                 cfg.apply(self._candidate)
         except (TrapError, MultiTrapError) as exc:
+            # The apply raised, so the API connection is still up. Cancel any armed
+            # auto-revert: leaving it would reboot the device out from under the operator
+            # and keep has_pending_commit() true, blocking a corrective commit. The
+            # pre-change snapshot is left in place so rollback() can still undo a
+            # partially-applied merge.
+            if revert_in is not None:
+                try:
+                    cfg.cancel_rollback(name=REVERT_JOB)
+                except (TrapError, MultiTrapError):
+                    pass
             raise error(str(exc))
         self._candidate = None
 

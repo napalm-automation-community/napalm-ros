@@ -232,6 +232,15 @@ class ROSDriver(NetworkDriver):
         return table
 
     def get_network_instances(self, name=""):
+        # RouterOS 7 replaced the v6 /ip/route/vrf menu with /ip/vrf: the 'routing-mark'
+        # field became 'name' and the per-VRF route-distinguisher was dropped (RD lives on
+        # routing tables / BGP VPN in v7). Dispatch on the major version.
+        version = version_parse(next(iter(self.api('/system/package/update/print')))['installed-version'])
+        if version.major >= 7:
+            return self._get_network_instances_v7(name)
+        return self._get_network_instances_v6(name)
+
+    def _get_network_instances_v6(self, name=""):
         query_ = self.api.path('/ip/route/vrf').select(
             query.Keys.interfaces,
             query.Keys.route_distinguisher,
@@ -240,6 +249,36 @@ class ROSDriver(NetworkDriver):
         if name:
             query_.where(query.Keys.routing_mark == name)
         return convert_vrf_table(query_)
+
+    def _get_network_instances_v7(self, name=""):
+        query_ = self.api.path('/ip/vrf').select(
+            query.Keys.name,
+            query.Keys.interfaces,
+            Key('builtin'),
+        )
+        if name:
+            query_.where(query.Keys.name == name)
+        instances = {}
+        for entry in query_:
+            # Skip the built-in 'main' VRF; only user-configured VRFs are reported, to
+            # match the v6 behaviour (which never listed a default instance).
+            if entry.get('builtin'):
+                continue
+            ifaces = entry.get('interfaces') or ''
+            ifaces_dict = {iface: {} for iface in ifaces.split(',')} if ifaces else {}
+            instances[entry['name']] = {
+                'name': entry['name'],
+                'type': 'L3VRF',
+                'state': {
+                    # v7 /ip/vrf has no route-distinguisher field; NAPALM's model wants a
+                    # string, so report it as empty rather than None.
+                    'route_distinguisher': ''
+                },
+                'interfaces': {
+                    'interface': ifaces_dict
+                },
+            }
+        return instances
 
     def get_lldp_neighbors(self):
         table = defaultdict(list)

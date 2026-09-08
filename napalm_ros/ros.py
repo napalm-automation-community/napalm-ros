@@ -375,9 +375,28 @@ class ROSDriver(NetworkDriver):
 
     def get_config(self, retrieve='all', full=False, sanitized=False):
         configs = {'running': '', 'candidate': '', 'startup': ''}
+        if retrieve not in ('running', 'all'):
+            return configs
+        version = version_parse(next(iter(self.api('/system/package/update/print')))['installed-version'])
+        # The API config engine reads the export back from a file; a configuration larger
+        # than the API's inline limit (~50 KB) needs /file/read chunking, which requires
+        # RouterOS 7.13+. Below that (older 7.x and RouterOS 6) read it over SSH instead,
+        # which streams the whole export with no size limit.
+        if version.release >= (7, 13):
+            # show-sensitive is the RouterOS 7 way to include secrets (hidden by default).
+            config = self.api.config().export(terse=True, verbose=full, show_sensitive=not sanitized).strip()
+        else:
+            config = self._get_running_config_ssh(version, full=full, sanitized=sanitized)
+        # remove date/time in 1st line
+        config = re.sub(r"^# \S+ \S+ by (.+)$", r'# by \1', config, flags=re.MULTILINE)
+        configs['running'] = config
+        return configs
+
+    def _get_running_config_ssh(self, version, full=False, sanitized=False):
+        # SSH fallback for RouterOS 6 and 7.x older than 7.13 (see get_config). RouterOS 7
+        # hides secrets by default (show-sensitive reveals them); RouterOS 6 shows them by
+        # default (hide-sensitive redacts them).
         command = ["export", "terse"]
-        version = next(iter(self.api('/system/package/update/print')))
-        version = version_parse(version['installed-version'])
         if full:
             command.append("verbose")
         if version.major >= 7 and not sanitized:
@@ -394,14 +413,9 @@ class ROSDriver(NetworkDriver):
         )
         try:
             _, stdout, _ = self.ssh.exec_command(" ".join(command))
-            config = stdout.read().decode().strip()
+            return stdout.read().decode().strip()
         finally:
             self.ssh.close()
-        # remove date/time in 1st line
-        config = re.sub(r"^# \S+ \S+ by (.+)$", r'# by \1', config, flags=re.MULTILINE)
-        if retrieve in ("running", "all"):
-            configs['running'] = config
-        return configs
 
     # -- Configuration management (RouterOS 7.x, binary API only) --------------
 

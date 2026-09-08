@@ -101,6 +101,9 @@ class FakeSSH(BaseTestDouble):
     def connect(self, *args, **kwargs):
         pass
 
+    def close(self, *args, **kwargs):
+        pass
+
 
 class FakeApi(BaseTestDouble):
 

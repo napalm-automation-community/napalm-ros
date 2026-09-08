@@ -1,0 +1,10 @@
+{
+    "data": [
+        {
+            "server-dns-names": "0.pool.ntp.org,1.pool.ntp.org",
+            "enabled": true,
+            "mode": "unicast",
+            "active-server": "91.212.242.21"
+        }
+    ]
+}

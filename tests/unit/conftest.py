@@ -14,6 +14,7 @@ from librouteros.protocol import (
     compose_word,
 )
 from librouteros.api import Path
+from librouteros.config import Config
 
 
 def eval_query(query, row):
@@ -101,6 +102,9 @@ class FakeSSH(BaseTestDouble):
     def connect(self, *args, **kwargs):
         pass
 
+    def close(self, *args, **kwargs):
+        pass
+
 
 class FakeApi(BaseTestDouble):
 
@@ -112,6 +116,9 @@ class FakeApi(BaseTestDouble):
             path='',
             api=self,
         ).join(*path)
+
+    def config(self):
+        return Config(api=self)
 
     def rawCmd(self, cmd, *words):
         proplist, words = parse_cmd(cmd, *words)

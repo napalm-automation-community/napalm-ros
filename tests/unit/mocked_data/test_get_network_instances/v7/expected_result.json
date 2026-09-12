@@ -1,0 +1,15 @@
+{
+    "blue": {
+        "name": "blue",
+        "type": "L3VRF",
+        "state": {
+            "route_distinguisher": ""
+        },
+        "interfaces": {
+            "interface": {
+                "ether2": {},
+                "ether3": {}
+            }
+        }
+    }
+}

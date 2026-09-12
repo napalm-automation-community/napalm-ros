@@ -1,0 +1,18 @@
+{
+    "data":
+    [
+        {
+            ".id": "*0",
+            "name": "main",
+            "interfaces": "all",
+            "builtin": true,
+            "disabled": false
+        },
+        {
+            ".id": "*1",
+            "name": "blue",
+            "interfaces": "ether2,ether3",
+            "disabled": false
+        }
+    ]
+}

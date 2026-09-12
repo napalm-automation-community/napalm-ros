@@ -74,6 +74,10 @@ class ROSDriver(NetworkDriver):
         # drop the session and get_config then fails with "No existing session"; set
         # paramiko_allow_agent=False in optional_args to work around that.
         self.paramiko_allow_agent = self.optional_args.get('paramiko_allow_agent', True)
+        # commit_config dry-runs the candidate before applying it, where RouterOS supports
+        # it (7.16+), so a syntax error is caught before anything is touched. Set
+        # validate_before_commit=False in optional_args to skip that pre-flight.
+        self.validate_before_commit = self.optional_args.get('validate_before_commit', True)
         self.api = None
         self.ssh = None
         # Buffered candidate configuration (set by load_*_candidate, applied by commit_config).
@@ -576,6 +580,9 @@ class ROSDriver(NetworkDriver):
         self._candidate = None
         self._config_replace = False
 
+    def _ros_version(self):
+        return version_parse(next(iter(self.api('/system/package/update/print')))['installed-version'])
+
     def commit_config(self, message='', revert_in=None):
         if message:
             raise NotImplementedError('Commit message not implemented for this platform')
@@ -593,6 +600,17 @@ class ROSDriver(NetworkDriver):
             )
         cfg = self.api.config()
         error = ReplaceConfigException if self._config_replace else MergeConfigException
+        # Pre-flight: dry-run the candidate so a syntax/parse error is caught before we
+        # snapshot and apply, rather than after the device has already been partly
+        # changed. /import dry-run is RouterOS 7.16+, so this is gated to fail closed:
+        # on anything older (where the flag does not exist) validation is skipped and we
+        # rely on arm_rollback instead. dry-run does not catch a valid command that fails
+        # on runtime state, so it narrows the failure window without replacing rollback.
+        if self.validate_before_commit and self._ros_version().release >= (7, 16):
+            try:
+                cfg.validate(self._candidate)
+            except (TrapError, MultiTrapError) as exc:
+                raise error(f'Candidate configuration failed dry-run validation: {exc}')
         try:
             # Snapshot the pre-change state so rollback() can always restore the last
             # commit. It must be persistent: a replace reboots, which would otherwise
@@ -602,6 +620,16 @@ class ROSDriver(NetworkDriver):
                 # Device-side scheduler restores its backup unless confirm_commit() cancels it.
                 cfg.arm_rollback(revert_in, name=REVERT_JOB)
         except (TrapError, MultiTrapError) as exc:
+            # RouterOS 7.17+ can gate /system/scheduler behind device-mode; when it is off,
+            # arm_rollback's scheduler add is refused ("not allowed by device-mode") and
+            # commit-confirm is simply unavailable. The candidate is not applied either way;
+            # point the operator at the fix rather than leaving a bare trap message.
+            if revert_in is not None and 'device-mode' in str(exc):
+                raise CommitError(
+                    f'Cannot arm commit-confirm: {exc}. The scheduler is disabled in this '
+                    "device's device-mode (RouterOS 7.17+); enable it with "
+                    "'/system/device-mode/update scheduler=yes' or commit without revert_in."
+                )
             raise CommitError(f'Failed to prepare rollback: {exc}')
         try:
             if self._config_replace:
@@ -609,6 +637,16 @@ class ROSDriver(NetworkDriver):
             else:
                 cfg.apply(self._candidate)
         except (TrapError, MultiTrapError) as exc:
+            # The apply raised, so the API connection is still up. Cancel any armed
+            # auto-revert: leaving it would reboot the device out from under the operator
+            # and keep has_pending_commit() true, blocking a corrective commit. The
+            # pre-change snapshot is left in place so rollback() can still undo a
+            # partially-applied merge.
+            if revert_in is not None:
+                try:
+                    cfg.cancel_rollback(name=REVERT_JOB)
+                except (TrapError, MultiTrapError):
+                    pass
             raise error(str(exc))
         self._candidate = None
 

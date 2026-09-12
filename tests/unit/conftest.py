@@ -15,6 +15,7 @@ from librouteros.protocol import (
 )
 from librouteros.api import Path
 from librouteros.config import Config
+from librouteros.exceptions import TrapError
 
 
 def eval_query(query, row):
@@ -132,4 +133,9 @@ class FakeApi(BaseTestDouble):
 
     def load(self, command):
         full_path = self.find_file(self.sanitize_text(command) + '.json')
-        yield from self.read_json_file(full_path)['data']
+        content = self.read_json_file(full_path)
+        # A fixture may model a menu that does not exist on the device (e.g. the old
+        # /routing/bgp/peer menu on RouterOS 7) by returning a trap instead of data.
+        if 'trap' in content:
+            raise TrapError(content['trap'])
+        yield from content['data']

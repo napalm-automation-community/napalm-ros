@@ -1,0 +1,15 @@
+{
+    "data": [
+        {
+            ".id": "*1",
+            "name": "c1",
+            "instance": "i1",
+            "as": 65001,
+            "routing-table": "main",
+            "remote.address": "10.10.10.2",
+            "remote.as": 65002,
+            "local.address": "10.10.10.1",
+            "local.role": "ebgp"
+        }
+    ]
+}

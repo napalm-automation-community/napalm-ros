@@ -1081,7 +1081,7 @@ version = "68.0.0"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.7"
-groups = ["main"]
+groups = ["main", "dev"]
 files = [
     {file = "setuptools-68.0.0-py3-none-any.whl", hash = "sha256:11e52c67415a381d10d6b462ced9cfb97066179f0e871399e006c4ab101fc85f"},
     {file = "setuptools-68.0.0.tar.gz", hash = "sha256:baf1fdb41c6da4cd2eae722e135500da913332ab3f2f5c7d33af9b492acb5235"},
@@ -1265,4 +1265,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "d9835ae76bcc3cd00c95898aa13ee3f1020c4bd45899b0456996ba93f61c482b"
+content-hash = "0074ebd5015c4bfb98d8b8b1784d0f8908296471c50e542de53898caa0a94b2b"

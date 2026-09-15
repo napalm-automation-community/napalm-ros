@@ -13,7 +13,7 @@ As napalm-ros uses API, several caveats exist.
 
 ### Configuration management
 
-Configuration management is supported on **RouterOS 7.x** and is implemented entirely over the binary API (via `librouteros`), so it needs no SSH access.
+Configuration management is supported on **RouterOS 7.x** and is implemented entirely over the binary API (via `librouteros`), so it needs no SSH access. It requires **librouteros >= 4.2.2**, which carries the `/file/add` fix `commit_config` relies on to apply a candidate on RouterOS older than ~7.13.
 
 * `get_config` / `compare_config` read the running configuration with `/export`.
 * `load_merge_candidate` stages a `.rsc` script that is applied with `/import`. `load_replace_candidate` stages a full configuration.

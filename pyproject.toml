@@ -21,7 +21,7 @@ keywords=[
 [tool.poetry.dependencies]
 python = "^3.10"
 napalm = ">=4.0.0,<6.0.0"
-librouteros = "^4.2.0"
+librouteros = "^4.2.2"
 packaging = ">=23.0"
 
 [tool.poetry.group.dev.dependencies]

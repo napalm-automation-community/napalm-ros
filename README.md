@@ -25,6 +25,16 @@ The commit/rollback machinery -- `load_merge_candidate` / `load_replace_candidat
 RouterOS configuration is imperative (an `/export` is a list of `add`/`set` actions, not declarative state) and ordering matters in some paths (e.g. `/ip firewall filter`) but not others (e.g. `/ip address`). `compare_config` is therefore a textual diff for review, not an executable patch.
 
 
+### cli
+
+`cli(commands)` runs each command as a one-line script with `/execute` over the binary API (no SSH) and returns what it printed, keyed by command. Commands are RouterOS script syntax, not interactive-terminal shorthand (abbreviated menu names, tab completion): `/ip/address/print` or `:put [/system/identity/get name]` on RouterOS 7, `/ip address print` on RouterOS 6 (which does not accept the slash-separated form). A command RouterOS cannot parse comes back as output text (`syntax error (line 1 column 6)`), the way an IOS `% Invalid input` would, not as an exception. Only the `text` encoding is supported.
+
+* On **RouterOS 7** (verified on 7.18.2 and 7.23.5) `/execute as-string` blocks and returns the output directly. RouterOS caps an executed script at 64 KB.
+* **RouterOS 6** rejects `as-string` (verified on 6.33.3, 6.44.5, 6.49.21), so there the script runs as a background job writing to a temporary file (`napalm-cli-<id>.txt`), which is read back and removed. The API only exposes a file's contents inline when it is under about 4 KB and RouterOS 6 has no `/file/read`, so larger output raises `CommandErrorException`; use SSH for that. Support is detected on the first `cli()` call of a session, not from the version number.
+
+Line endings are normalised to `\n`.
+
+
 ### Implemented getters
 
 * get_arp_table
@@ -47,3 +57,4 @@ RouterOS configuration is imperative (an `/export` is a list of `add`/`set` acti
 * get_bgp_neighbors_detail
 * get_config
 * get_vlans
+* cli

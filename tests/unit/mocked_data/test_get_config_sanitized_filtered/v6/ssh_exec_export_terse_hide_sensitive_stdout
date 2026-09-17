@@ -1,0 +1,7 @@
+# aug/13/2022 21:34:26 by RouterOS 7.4
+# software id = XXXX-XXXX
+#
+# model = 751G-2HnD
+# serial number = XXXXXXXXXXXX
+/interface bridge auto-mac=yes name=bridge
+/ip address add address=1.1.1.1/24 interface=ether1 comment="some comment with spaces"

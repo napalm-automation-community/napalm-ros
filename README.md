@@ -2,6 +2,11 @@
 [![Supported python versions](https://img.shields.io/pypi/pyversions/napalm-ros.svg)](https://pypi.python.org/pypi/napalm-ros/)
 
 
+### Requirements
+
+napalm-ros 1.6.0 and newer require **NAPALM 5.x**. NAPALM 5 added a `format` argument to `get_config`, and a driver cannot match both the NAPALM 4 and NAPALM 5 method signatures at once, so NAPALM 4 is no longer supported. Stay on napalm-ros 1.5.0 if you need NAPALM 4.
+
+
 ### Caveats
 
 As napalm-ros uses API, several caveats exist.
@@ -9,6 +14,7 @@ As napalm-ros uses API, several caveats exist.
 * API is not versioned so things may break when routeros is upgraded.
 * RouterOS has no native, non-reboot commit/rollback and safe mode is not exposed via the API. Rollback is emulated with a device-side scheduler that restores a backup, so a rollback (or an expired commit-confirm) reverts by rebooting. See Configuration management.
 * `get_config` reads the running configuration over the binary API on **RouterOS 7.13+** (no SSH). Below 7.13 -- RouterOS 6 and RouterOS 7.0-7.12 -- it falls back to SSH (paramiko), because reading a large export back over the API needs the chunked `/file/read` added in 7.13. On that SSH path, paramiko offers keys from a running SSH agent by default; if the agent offers a key the device rejects, RouterOS may drop the session and `get_config` then fails with `No existing session`. Pass `optional_args={'paramiko_allow_agent': False}` to authenticate with the password only (SSH agent/key auth is otherwise left enabled); `paramiko_look_for_keys` (default `False`) similarly controls on-disk key lookup.
+* `get_config` accepts NAPALM 5's `format` argument but only supports `text`, because RouterOS exports its configuration as an `/export` script and offers no other representation. Any other value raises `NotImplementedError`.
 
 
 ### Configuration management

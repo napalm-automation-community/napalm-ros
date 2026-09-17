@@ -20,15 +20,13 @@ keywords=[
 
 [tool.poetry.dependencies]
 python = "^3.10"
-napalm = ">=4.0.0,<6.0.0"
+napalm = ">=5.0.0,<6.0.0"
 librouteros = "^4.2.2"
 packaging = ">=23.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.4,<10.0"
 yapf = "^0.40.1"
-# napalm imports pkg_resources, which setuptools 81 removed; cap below that until napalm migrates off it.
-setuptools = "<81"
 
 [tool.yapf]
 based_on_style = "pep8"

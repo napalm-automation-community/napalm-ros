@@ -2,6 +2,8 @@
 
 import re
 import ssl
+import time
+import uuid
 from collections import defaultdict
 from itertools import chain
 
@@ -18,6 +20,7 @@ from librouteros.query import (
 )
 from napalm.base import NetworkDriver
 from napalm.base.exceptions import (
+    CommandErrorException,
     CommitConfirmException,
     CommitError,
     ConnectionException,
@@ -48,6 +51,7 @@ class ROSDriver(NetworkDriver):
 
     def __init__(self, hostname, username, password, timeout=60, optional_args=None):
         self.hostname = hostname
+        self._execute_as_string = None  # cli(): whether /execute as-string works, detected on first use
         self.username = username
         self.password = password
         self.timeout = timeout
@@ -553,6 +557,80 @@ class ROSDriver(NetworkDriver):
             return stdout.read().decode().strip()
         finally:
             self.ssh.close()
+
+    def cli(self, commands, encoding='text'):
+        # The binary API has no interactive terminal, so each command is run as a one-line
+        # script through /execute and its printed output is returned. Commands are
+        # RouterOS script syntax (e.g. "/ip/address/print" on RouterOS 7, "/ip address print"
+        # on RouterOS 6, or ":put [/system/identity/get name]"), not interactive shorthand.
+        # RouterOS reports a bad command as output text ("syntax error ..."), not as an
+        # API trap, so it comes back in the result like an IOS "% Invalid input" would.
+        if encoding != 'text':
+            raise NotImplementedError(f'{encoding} is not a supported encoding')
+        if not isinstance(commands, list):
+            raise TypeError('Please enter a valid list of commands!')
+        output = {}
+        for command in commands:
+            try:
+                output[command] = self._execute(command)
+            except (TrapError, MultiTrapError) as exc:
+                raise CommandErrorException(f'{command}: {exc}')
+        return output
+
+    def _execute(self, script):
+        # RouterOS 7 (verified on 7.18.2 and 7.23.5): "as-string" makes /execute block and
+        # hand the output back in the !done reply (=ret=). RouterOS 6 rejects that
+        # parameter with "unknown parameter", so detect it once per session and fall back
+        # to running the script as a background job that writes its output to a file.
+        if self._execute_as_string is not False:
+            try:
+                rows = tuple(self.api('/execute', script=script, **{'as-string': True}))
+            except TrapError as exc:
+                if self._execute_as_string or 'unknown parameter' not in str(exc):
+                    raise
+                self._execute_as_string = False
+            else:
+                self._execute_as_string = True
+                # A script that prints nothing comes back as a bare !done with no =ret=.
+                text = str(rows[0]['ret']) if rows and 'ret' in rows[0] else ''
+                return text.replace('\r\n', '\n')
+        return self._execute_to_file(script)
+
+    def _execute_to_file(self, script):
+        # /execute without as-string returns the job id (=ret=) and runs in the background;
+        # wait for the job to finish, then read the file it wrote. The API only exposes a
+        # file's contents inline when it is small (about 4 KB); larger output would need
+        # /file/read (RouterOS 7.13+, where as-string is used instead), so on RouterOS 6
+        # it cannot be read over the API at all.
+        name = f'napalm-cli-{uuid.uuid4().hex[:8]}'
+        filename = f'{name}.txt'
+        deadline = time.monotonic() + self.timeout
+        rows = tuple(self.api('/execute', script=script, file=name))
+        job = rows[0].get('ret') if rows else None
+        try:
+            while job and time.monotonic() < deadline and any(row.get('.id') == job for row in self.api('/system/script/job/print')):
+                time.sleep(0.1)
+            while time.monotonic() < deadline:
+                rows = tuple(self.api.path('file').select(Key('size'), Key('contents')).where(Key('name') == filename))
+                if rows:
+                    break
+                time.sleep(0.1)
+            else:
+                raise CommandErrorException(f'{script}: timed out waiting for /execute output')
+            if 'contents' in rows[0]:
+                return str(rows[0]['contents']).replace('\r\n', '\n').removesuffix('\n')
+            if not int(rows[0].get('size') or 0):
+                return ''
+            raise CommandErrorException(
+                f'{script}: output ({rows[0]["size"]} bytes) exceeds what the API exposes inline (about 4 KB) on this RouterOS version'
+            )
+        finally:
+            try:
+                ids = [row['.id'] for row in self.api.path('file').select(Key('.id')).where(Key('name') == filename)]
+                if ids:
+                    self.api.path('file').remove(*ids)
+            except (TrapError, MultiTrapError, ConnectionClosed, FatalError, OSError):
+                pass
 
     # -- Configuration management (RouterOS 7.x, binary API only) --------------
 

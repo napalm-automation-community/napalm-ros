@@ -514,7 +514,11 @@ class ROSDriver(NetworkDriver):
             ),
         }
 
-    def get_config(self, retrieve='all', full=False, sanitized=False):
+    def get_config(self, retrieve='all', full=False, sanitized=False, format='text'):
+        # RouterOS only exports its configuration as text (an /export script), so any
+        # other format NAPALM 5 allows to be requested cannot be served here.
+        if format != 'text':
+            raise NotImplementedError(f'{format} is not a supported configuration format')
         configs = {'running': '', 'candidate': '', 'startup': ''}
         if retrieve not in ('running', 'all'):
             return configs

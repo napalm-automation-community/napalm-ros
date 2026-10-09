@@ -7,17 +7,17 @@ from napalm.base.helpers import (
 
 def parse_duration(duration_str: str):
     tdmap = {
-        'w': 'weeks',
-        'd': 'days',
-        'h': 'hours',
-        'm': 'minutes',
-        's': 'seconds',
-        'ms': 'milliseconds',
-        'us': 'microseconds',
+        "w": "weeks",
+        "d": "days",
+        "h": "hours",
+        "m": "minutes",
+        "s": "seconds",
+        "ms": "milliseconds",
+        "us": "microseconds",
     }
     tdargs = {}
-    nums = ''
-    unit = ''
+    nums = ""
+    unit = ""
     for char in duration_str:
         if char.isdigit() and not unit:
             nums += char
@@ -26,13 +26,13 @@ def parse_duration(duration_str: str):
         elif char.isdigit() and unit:
             tdargs[tdmap[unit]] = int(nums)
             nums = char
-            unit = ''
+            unit = ""
     tdargs[tdmap[unit]] = int(nums)
     return timedelta(**tdargs)
 
 
 def iface_addresses(rows, ifname):
-    '''
+    """
     Return every found address and prefix length for given interface.
 
     example:
@@ -40,7 +40,7 @@ def iface_addresses(rows, ifname):
         '192.168.1.1':
             {'prefix_length': 24}
         }
-    '''
-    found = (row['address'].split('/', 1) for row in rows if row['interface'] == ifname)
+    """
+    found = (row["address"].split("/", 1) for row in rows if row["interface"] == ifname)
     pairs = ((cast_ip(address), int(prefix_length)) for address, prefix_length in found)
-    return {address: {'prefix_length': length} for address, length in pairs}
+    return {address: {"prefix_length": length} for address, length in pairs}

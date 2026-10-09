@@ -1,22 +1,22 @@
 import unittest
 
-from napalm_ros import ros
 from napalm.base.test.base import TestConfigNetworkDriver, TestGettersNetworkDriver  # noqa
+
+from napalm_ros import ros
 
 
 class TestConfigROSDriver(unittest.TestCase, TestConfigNetworkDriver):
-
     @classmethod
     def setUpClass(cls):
         """Executed when the class is instantiated."""
-        cls.vendor = 'ros'
+        cls.vendor = "ros"
         cls.device = ros.ROSDriver(
-            '127.0.0.1',
-            'vagrant',
-            'vagrant',
+            "127.0.0.1",
+            "vagrant",
+            "vagrant",
             timeout=60,
             optional_args={
-                'port': 12205,
+                "port": 12205,
             },
         )
         cls.device.open()

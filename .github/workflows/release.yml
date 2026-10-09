@@ -33,9 +33,6 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install library
-        run: uv sync --all-extras --dev
-
       - name: Build
         run: uv build
 

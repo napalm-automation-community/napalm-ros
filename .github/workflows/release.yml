@@ -22,10 +22,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          lfs: false
-          fetch-depth: 0
-          fetch-tags: true
 
       - name: Install python
         uses: actions/setup-python@v6

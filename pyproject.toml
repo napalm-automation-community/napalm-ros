@@ -28,7 +28,6 @@ Issues = "https://github.com/napalm-automation-community/napalm-ros/issues"
 dev = [
     "pytest==9.*",
     "ruff==0.*",
-    "uv>=0.11.16",
 ]
 
 [build-system]

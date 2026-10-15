@@ -2,4 +2,4 @@
 
 from napalm_ros.ros import ROSDriver
 
-__all__ = ('ROSDriver', )
+__all__ = ("ROSDriver",)

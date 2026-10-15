@@ -1,48 +1,47 @@
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry]
+[project]
 name = "napalm-ros"
-version="1.6.0"
-description="Network Automation and Programmability Abstraction Layer driver for Mikrotik ROS"
+version = "1.6.0"
+description = "Network Automation and Programmability Abstraction Layer driver for Mikrotik ROS"
 readme = "README.md"
-authors = ["Łukasz Kostka <lukasz.g.kostka@gmail.com>"]
+authors = [
+    { name = "Łukasz Kostka", email = "lukasz.g.kostka@gmail.com" },
+]
 license = "GPL-2.0-or-later"
-documentation="https://github.com/napalm-automation-community/napalm-ros"
-repository="https://github.com/napalm-automation-community/napalm-ros/issues"
-keywords=[
-  "mikrotik",
-  "routeros",
-  "api",
-  "napalm",
+keywords = [
+    "mikrotik",
+    "routeros",
+    "api",
+    "napalm",
+]
+requires-python = ">=3.10.0"
+dependencies = [
+    "napalm>=5.0.0,<6.0.0",
+    "librouteros~=4.2.2",
+    "packaging>=23.0",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-napalm = ">=5.0.0,<6.0.0"
-librouteros = "^4.2.2"
-packaging = ">=23.0"
+[project.urls]
+Homepage = "https://github.com/napalm-automation-community/napalm-ros"
+Issues = "https://github.com/napalm-automation-community/napalm-ros/issues"
 
-[tool.poetry.group.dev.dependencies]
-pytest = ">=7.4,<10.0"
-yapf = "^0.40.1"
+[dependency-groups]
+dev = [
+    "pytest==9.*",
+    "ruff==0.*",
+]
 
-[tool.yapf]
-based_on_style = "pep8"
-split_before_logical_operator = true
-align_closing_bracket_with_visual_indent = true
-blank_line_before_nested_class_or_def = true
-blank_lines_around_top_level_definition = 2
-column_limit = 140
-dedent_closing_brackets = true
-coalesce_brackets = false
-each_dict_entry_on_separate_line = true
-indent_dictionary_value = false
-split_arguments_when_comma_terminated = true
+[build-system]
+requires = ["uv_build==0.12.*"]
+build-backend = "uv_build"
 
 [tool.ruff]
 line-length = 160
+
+[tool.ruff.lint]
 ignore = [
     "E712",
 ]
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 80

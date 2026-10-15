@@ -41,13 +41,12 @@ from napalm_ros import (
 # Names of the on-device artifacts used for rollback. A backup taken before a plain
 # commit lets rollback() restore the previous state; the commit-confirm job is a
 # device-side scheduler that restores its own backup unless confirm_commit() cancels it.
-ROLLBACK_SNAPSHOT = 'napalm-rollback'
-REVERT_JOB = 'napalm-commit-confirm'
+ROLLBACK_SNAPSHOT = "napalm-rollback"
+REVERT_JOB = "napalm-commit-confirm"
 
 
 class ROSDriver(NetworkDriver):
-
-    platform = 'ros'
+    platform = "ros"
 
     def __init__(self, hostname, username, password, timeout=60, optional_args=None):
         self.hostname = hostname
@@ -58,7 +57,7 @@ class ROSDriver(NetworkDriver):
         self.optional_args = optional_args or {}
         self.version = None
 
-        if self.optional_args.get('netbox_default_ssl_params', False):
+        if self.optional_args.get("netbox_default_ssl_params", False):
             ctx = ssl.create_default_context()
             try:
                 IPAddress(self.hostname)
@@ -66,23 +65,23 @@ class ROSDriver(NetworkDriver):
                 ctx.check_hostname = False
             except AddrFormatError:
                 # if hostname is not IP, we use check_hostname variable
-                ctx.check_hostname = self.optional_args.get('check_hostname', True)
+                ctx.check_hostname = self.optional_args.get("check_hostname", True)
 
-            self.optional_args['ssl_wrapper'] = ctx.wrap_socket
+            self.optional_args["ssl_wrapper"] = ctx.wrap_socket
 
-        self.ssl_wrapper = self.optional_args.get('ssl_wrapper', librouteros.DEFAULTS['ssl_wrapper'])
-        self.port = self.optional_args.get('port', 8729 if 'ssl_wrapper' in self.optional_args else 8728)
-        self.ssh_port = self.optional_args.get('ssh_port', 22)
-        self.paramiko_look_for_keys = self.optional_args.get('paramiko_look_for_keys', False)
+        self.ssl_wrapper = self.optional_args.get("ssl_wrapper", librouteros.DEFAULTS["ssl_wrapper"])
+        self.port = self.optional_args.get("port", 8729 if "ssl_wrapper" in self.optional_args else 8728)
+        self.ssh_port = self.optional_args.get("ssh_port", 22)
+        self.paramiko_look_for_keys = self.optional_args.get("paramiko_look_for_keys", False)
         # paramiko's allow_agent default (True) is preserved so SSH key/agent auth keeps
         # working unchanged. If an SSH agent offers keys the device rejects, RouterOS can
         # drop the session and get_config then fails with "No existing session"; set
         # paramiko_allow_agent=False in optional_args to work around that.
-        self.paramiko_allow_agent = self.optional_args.get('paramiko_allow_agent', True)
+        self.paramiko_allow_agent = self.optional_args.get("paramiko_allow_agent", True)
         # commit_config dry-runs the candidate before applying it, where RouterOS supports
         # it (7.16+), so a syntax error is caught before anything is touched. Set
         # validate_before_commit=False in optional_args to skip that pre-flight.
-        self.validate_before_commit = self.optional_args.get('validate_before_commit', True)
+        self.validate_before_commit = self.optional_args.get("validate_before_commit", True)
         self.api = None
         self.ssh = None
         # Buffered candidate configuration (set by load_*_candidate, applied by commit_config).
@@ -99,29 +98,29 @@ class ROSDriver(NetworkDriver):
         # The binary API exposes no ping/keepalive, so probe with a cheap read to tell a
         # dropped or rebooted session apart from a live one.
         if self.api is None:
-            return {'is_alive': False}
+            return {"is_alive": False}
         try:
-            next(iter(self.api('/system/identity/print')))
+            next(iter(self.api("/system/identity/print")))
         except (ConnectionClosed, FatalError, OSError):
-            return {'is_alive': False}
-        return {'is_alive': True}
+            return {"is_alive": False}
+        return {"is_alive": True}
 
     def get_interfaces_counters(self):
         result = {}
-        for iface in self.api('/interface/print', stats=True):
-            result[iface['name']] = {
-                'tx_errors': iface.get('tx-error', 0),
-                'rx_errors': iface.get('rx-error', 0),
-                'tx_discards': iface.get('tx-drop', 0),
-                'rx_discards': iface.get('rx-drop', 0),
-                'tx_octets': iface['tx-byte'],
-                'rx_octets': iface['rx-byte'],
-                'tx_unicast_packets': iface['tx-packet'],
-                'rx_unicast_packets': iface['rx-packet'],
-                'tx_multicast_packets': 0,
-                'rx_multicast_packets': 0,
-                'tx_broadcast_packets': 0,
-                'rx_broadcast_packets': 0,
+        for iface in self.api("/interface/print", stats=True):
+            result[iface["name"]] = {
+                "tx_errors": iface.get("tx-error", 0),
+                "rx_errors": iface.get("rx-error", 0),
+                "tx_discards": iface.get("tx-drop", 0),
+                "rx_discards": iface.get("rx-drop", 0),
+                "tx_octets": iface["tx-byte"],
+                "rx_octets": iface["rx-byte"],
+                "tx_unicast_packets": iface["tx-packet"],
+                "rx_unicast_packets": iface["rx-packet"],
+                "tx_multicast_packets": 0,
+                "rx_multicast_packets": 0,
+                "tx_broadcast_packets": 0,
+                "rx_broadcast_packets": 0,
             }
 
         return result
@@ -138,7 +137,7 @@ class ROSDriver(NetworkDriver):
 
     def _get_bgp_neighbors_legacy(self, peers):
         # RouterOS 6 (and any 7.x build still exposing the old peer menu).
-        bgp_neighbors = defaultdict(lambda: {'peers': {}})
+        bgp_neighbors = defaultdict(lambda: {"peers": {}})
         sent_prefixes = defaultdict(lambda: defaultdict(int))
 
         # Count prefixes advertised to each configured peer
@@ -156,7 +155,9 @@ class ROSDriver(NetworkDriver):
                 if len(peer["address-families"].split(",")) > 1:
                     for af in peer["address-families"].split(","):
                         prefix_count = len(
-                            self.api.path(f"/{af}/route").select(query.Keys.dst_addr).where(
+                            self.api.path(f"/{af}/route")
+                            .select(query.Keys.dst_addr)
+                            .where(
                                 query.Keys.bgp == True,
                                 query.Keys.rcv_from == peer["name"],
                             )
@@ -192,7 +193,7 @@ class ROSDriver(NetworkDriver):
         # instances are explicit (a /routing/bgp/instance menu and a per-session/connection
         # "instance" field); earlier 7.x auto-detects the instance by router-id and has no
         # instance menu, so the connection carries "router-id" directly.
-        bgp_neighbors = defaultdict(lambda: {'peers': {}})
+        bgp_neighbors = defaultdict(lambda: {"peers": {}})
         try:
             instances = {inst["name"]: inst for inst in self.api("/routing/bgp/instance/print")}
         except (TrapError, MultiTrapError):
@@ -240,7 +241,7 @@ class ROSDriver(NetworkDriver):
     def get_bgp_neighbors_detail(self, neighbor_address=""):
         peers = self.api.path("/routing/bgp/peer").select(*query.bgp_peers)
         if neighbor_address:
-            peers.where(Key('remote-address') == neighbor_address)
+            peers.where(Key("remote-address") == neighbor_address)
         try:
             peers = tuple(peers)
         except (TrapError, MultiTrapError):
@@ -250,18 +251,20 @@ class ROSDriver(NetworkDriver):
 
     def _get_bgp_neighbors_detail_legacy(self, peers):
         # A proplist print can return sparse rows, so read fields defensively.
-        peer_names = {row['name'] for row in peers if 'name' in row}
-        peers_instances = {row['instance'] for row in peers if 'instance' in row}
+        peer_names = {row["name"] for row in peers if "name" in row}
+        peers_instances = {row["instance"] for row in peers if "instance" in row}
         advertisements = self.api.path("/routing/bgp/advertisements").select(*query.bgp_advertisments)
         if peer_names:
-            advertisements.where(Key('peer').In(*peer_names))
+            advertisements.where(Key("peer").In(*peer_names))
         advertisements = tuple(advertisements)
-        instances = self.api.path('/routing/bgp/instance').select(*query.bgp_instances)
+        instances = self.api.path("/routing/bgp/instance").select(*query.bgp_instances)
         if peers_instances:
-            instances.where(And(
-                Key('name').In(*peers_instances),
-                query.not_disabled,
-            ))
+            instances.where(
+                And(
+                    Key("name").In(*peers_instances),
+                    query.not_disabled,
+                )
+            )
 
         # Count prefixes advertised to each peer
         sent_prefixes = defaultdict(int)
@@ -302,43 +305,43 @@ class ROSDriver(NetworkDriver):
         return bgp_neighbors
 
     def get_arp_table(self, vrf=""):
-        arp = self.api.path('/ip/arp').select(
+        arp = self.api.path("/ip/arp").select(
             query.Keys.interface,
             query.Keys.mac_address,
             query.Keys.address,
         )
         if vrf:
-            vrfs = self.api.path('/ip/route/vrf').select(query.Keys.interfaces).where(query.Keys.routing_mark == vrf)
+            vrfs = self.api.path("/ip/route/vrf").select(query.Keys.interfaces).where(query.Keys.routing_mark == vrf)
             interfaces = flatten_split(vrfs, str(query.Keys.interfaces))
             arp.where(query.Keys.interface.In(*interfaces))
         return list(convert_arp_table(arp))
 
     def get_mac_address_table(self):
         table = []
-        for entry in self.api('/interface/bridge/host/print'):
+        for entry in self.api("/interface/bridge/host/print"):
             table.append(
                 {
-                    'mac': entry['mac-address'],
-                    'interface': entry['interface'],
-                    'vlan': entry.get('vid', 1),  # Vlan id is not consistently set in the API
-                    'static': not entry['dynamic'],
-                    'active': not entry['invalid'],
-                    'moves': 0,
-                    'last_move': 0.0,
+                    "mac": entry["mac-address"],
+                    "interface": entry["interface"],
+                    "vlan": entry.get("vid", 1),  # Vlan id is not consistently set in the API
+                    "static": not entry["dynamic"],
+                    "active": not entry["invalid"],
+                    "moves": 0,
+                    "last_move": 0.0,
                 }
             )
 
         try:
-            for entry in self.api('/interface/ethernet/switch/unicast-fdb/print'):
+            for entry in self.api("/interface/ethernet/switch/unicast-fdb/print"):
                 table.append(
                     {
-                        'mac': entry['mac-address'],
-                        'interface': entry['port'],
-                        'vlan': entry['vlan-id'],
-                        'static': not entry['dynamic'],
-                        'active': entry['active'],
-                        'moves': 0,
-                        'last_move': 0.0,
+                        "mac": entry["mac-address"],
+                        "interface": entry["port"],
+                        "vlan": entry["vlan-id"],
+                        "static": not entry["dynamic"],
+                        "active": entry["active"],
+                        "moves": 0,
+                        "last_move": 0.0,
                     }
                 )
         except librouteros.exceptions.TrapError:
@@ -352,13 +355,13 @@ class ROSDriver(NetworkDriver):
         # RouterOS 7 replaced the v6 /ip/route/vrf menu with /ip/vrf: the 'routing-mark'
         # field became 'name' and the per-VRF route-distinguisher was dropped (RD lives on
         # routing tables / BGP VPN in v7). Dispatch on the major version.
-        version = version_parse(next(iter(self.api('/system/package/update/print')))['installed-version'])
+        version = version_parse(next(iter(self.api("/system/package/update/print")))["installed-version"])
         if version.major >= 7:
             return self._get_network_instances_v7(name)
         return self._get_network_instances_v6(name)
 
     def _get_network_instances_v6(self, name=""):
-        query_ = self.api.path('/ip/route/vrf').select(
+        query_ = self.api.path("/ip/route/vrf").select(
             query.Keys.interfaces,
             query.Keys.route_distinguisher,
             query.Keys.routing_mark,
@@ -368,10 +371,10 @@ class ROSDriver(NetworkDriver):
         return convert_vrf_table(query_)
 
     def _get_network_instances_v7(self, name=""):
-        query_ = self.api.path('/ip/vrf').select(
+        query_ = self.api.path("/ip/vrf").select(
             query.Keys.name,
             query.Keys.interfaces,
-            Key('builtin'),
+            Key("builtin"),
         )
         if name:
             query_.where(query.Keys.name == name)
@@ -379,52 +382,52 @@ class ROSDriver(NetworkDriver):
         for entry in query_:
             # Skip the built-in 'main' VRF; only user-configured VRFs are reported, to
             # match the v6 behaviour (which never listed a default instance).
-            if entry.get('builtin'):
+            if entry.get("builtin"):
                 continue
-            ifaces = entry.get('interfaces') or ''
-            ifaces_dict = {iface: {} for iface in ifaces.split(',')} if ifaces else {}
-            instances[entry['name']] = {
-                'name': entry['name'],
-                'type': 'L3VRF',
-                'state': {
+            ifaces = entry.get("interfaces") or ""
+            ifaces_dict = {iface: {} for iface in ifaces.split(",")} if ifaces else {}
+            instances[entry["name"]] = {
+                "name": entry["name"],
+                "type": "L3VRF",
+                "state": {
                     # v7 /ip/vrf has no route-distinguisher field; NAPALM's model wants a
                     # string, so report it as empty rather than None.
-                    'route_distinguisher': ''
+                    "route_distinguisher": ""
                 },
-                'interfaces': {
-                    'interface': ifaces_dict
-                },
+                "interfaces": {"interface": ifaces_dict},
             }
         return instances
 
     def get_lldp_neighbors(self):
         table = defaultdict(list)
-        for entry in self.api.path('/ip/neighbor').select(
+        for entry in self.api.path("/ip/neighbor").select(
             query.Keys.identity,
             query.Keys.interface_name,
             query.Keys.interface,
         ):
-            ifaces = LLDPInterfaces.fromApi(entry['interface'])
-            table[ifaces.child].append({
-                'hostname': entry['identity'],
-                'port': entry.get('interface-name', ''),
-            })
+            ifaces = LLDPInterfaces.fromApi(entry["interface"])
+            table[ifaces.child].append(
+                {
+                    "hostname": entry["identity"],
+                    "port": entry.get("interface-name", ""),
+                }
+            )
         return table
 
     def get_lldp_neighbors_detail(self, interface=""):
         table = defaultdict(list)
-        for entry in self.api.path('/ip/neighbor').select(*query.lldp_neighbors):
-            ifaces = LLDPInterfaces.fromApi(entry['interface'])
+        for entry in self.api.path("/ip/neighbor").select(*query.lldp_neighbors):
+            ifaces = LLDPInterfaces.fromApi(entry["interface"])
             table[ifaces.child].append(
                 {
-                    'parent_interface': ifaces.parent,
-                    'remote_chassis_id': entry.get('mac-address', ''),
-                    'remote_system_name': entry.get('identity', ''),
-                    'remote_port': entry.get('interface-name', ''),
-                    'remote_port_description': '',
-                    'remote_system_description': entry.get('system-description', ''),
-                    'remote_system_capab': entry.get('system-caps', '').split(','),
-                    'remote_system_enable_capab': entry.get('system-caps-enabled', '').split(','),
+                    "parent_interface": ifaces.parent,
+                    "remote_chassis_id": entry.get("mac-address", ""),
+                    "remote_system_name": entry.get("identity", ""),
+                    "remote_port": entry.get("interface-name", ""),
+                    "remote_port_description": "",
+                    "remote_system_description": entry.get("system-description", ""),
+                    "remote_system_capab": entry.get("system-caps", "").split(","),
+                    "remote_system_enable_capab": entry.get("system-caps-enabled", "").split(","),
                 }
             )
         # There is no way of sending query for specific interface since parent and child
@@ -435,94 +438,94 @@ class ROSDriver(NetworkDriver):
 
     def get_ipv6_neighbors_table(self):
         ipv6_neighbors_table = []
-        for entry in self.api('/ipv6/neighbor/print'):
-            if 'mac-address' not in entry:
+        for entry in self.api("/ipv6/neighbor/print"):
+            if "mac-address" not in entry:
                 continue
             ipv6_neighbors_table.append(
                 {
-                    'interface': entry['interface'],
-                    'mac': cast_mac(entry['mac-address']),
-                    'ip': cast_ip(entry['address']),
-                    'age': float(-1),
-                    'state': entry['status']
+                    "interface": entry["interface"],
+                    "mac": cast_mac(entry["mac-address"]),
+                    "ip": cast_ip(entry["address"]),
+                    "age": float(-1),
+                    "state": entry["status"],
                 }
             )
         return ipv6_neighbors_table
 
     def get_environment(self):
         environment = {
-            'fans': {},
-            'temperature': {},
-            'power': {},
-            'cpu': {},
-            'memory': {
-                'available_ram': 0,
-                'used_ram': 0,
+            "fans": {},
+            "temperature": {},
+            "power": {},
+            "cpu": {},
+            "memory": {
+                "available_ram": 0,
+                "used_ram": 0,
             },
         }
 
         try:
-            system_resource = next(iter(self.api('/system/resource/print')))
+            system_resource = next(iter(self.api("/system/resource/print")))
         except StopIteration:
             return environment
 
-        total_memory = system_resource.get('total-memory')
-        free_memory = system_resource.get('free-memory')
-        environment['memory'] = {'available_ram': total_memory, 'used_ram': int(total_memory - free_memory)}
+        total_memory = system_resource.get("total-memory")
+        free_memory = system_resource.get("free-memory")
+        environment["memory"] = {"available_ram": total_memory, "used_ram": int(total_memory - free_memory)}
 
-        for entry in self.api('/system/health/print'):
+        for entry in self.api("/system/health/print"):
             # RouterOS also returns a health-monitoring config row (e.g.
             # {'state': 'disabled'}) that has no sensor name; only name/value rows are
             # sensor readings. Skip anything without a name.
-            name_field = entry.get('name')
+            name_field = entry.get("name")
             if not name_field:
                 continue
-            if 'temperature' in name_field:
-                name = name_field.replace('-temperature', '')
-                temperature = float(entry['value'])
-                environment['temperature'][name] = {'temperature': temperature, 'is_alert': False, 'is_critical': False}
-            elif 'speed' in name_field:
-                name = name_field.replace('-speed', '')
-                status = int(entry['value']) > 50
-                environment['fans'][name] = {'status': status}
-            elif 'state' in name_field:
-                name = name_field.replace('-state', '')
-                status = entry['value'] == 'ok'
-                environment['power'][name] = {'status': status, 'capacity': 0.0, 'output': 0.0}
+            if "temperature" in name_field:
+                name = name_field.replace("-temperature", "")
+                temperature = float(entry["value"])
+                environment["temperature"][name] = {"temperature": temperature, "is_alert": False, "is_critical": False}
+            elif "speed" in name_field:
+                name = name_field.replace("-speed", "")
+                status = int(entry["value"]) > 50
+                environment["fans"][name] = {"status": status}
+            elif "state" in name_field:
+                name = name_field.replace("-state", "")
+                status = entry["value"] == "ok"
+                environment["power"][name] = {"status": status, "capacity": 0.0, "output": 0.0}
 
-        for cpu_values in self.api('/system/resource/cpu/print'):
-            name = cpu_values['cpu']
-            environment['cpu'][name] = {'%usage': float(cpu_values['load'])}
+        for cpu_values in self.api("/system/resource/cpu/print"):
+            name = cpu_values["cpu"]
+            environment["cpu"][name] = {"%usage": float(cpu_values["load"])}
 
         return environment
 
     def get_facts(self):
-        resource = next(iter(self.api('/system/resource/print')))
-        identity = next(iter(self.api('/system/identity/print')))
-        routerboard = next(iter(self.api('/system/routerboard/print')))
-        interfaces = tuple(self.api('/interface/print'))
+        resource = next(iter(self.api("/system/resource/print")))
+        identity = next(iter(self.api("/system/identity/print")))
+        routerboard = next(iter(self.api("/system/routerboard/print")))
+        interfaces = tuple(self.api("/interface/print"))
         return {
-            'uptime': float(utils.parse_duration(resource['uptime']).total_seconds()),
-            'vendor': resource['platform'],
-            'model': resource['board-name'],
-            'hostname': identity['name'],
-            'fqdn': '',
-            'os_version': resource['version'],
-            'serial_number': routerboard.get('serial-number', ''),
-            'interface_list': napalm.base.utils.string_parsers.sorted_nicely(
-                tuple(iface['name'] for iface in interfaces),
+            "uptime": float(utils.parse_duration(resource["uptime"]).total_seconds()),
+            "vendor": resource["platform"],
+            "model": resource["board-name"],
+            "hostname": identity["name"],
+            "fqdn": "",
+            "os_version": resource["version"],
+            "serial_number": routerboard.get("serial-number", ""),
+            "interface_list": napalm.base.utils.string_parsers.sorted_nicely(
+                tuple(iface["name"] for iface in interfaces),
             ),
         }
 
-    def get_config(self, retrieve='all', full=False, sanitized=False, format='text'):
+    def get_config(self, retrieve="all", full=False, sanitized=False, format="text"):
         # RouterOS only exports its configuration as text (an /export script), so any
         # other format NAPALM 5 allows to be requested cannot be served here.
-        if format != 'text':
-            raise NotImplementedError(f'{format} is not a supported configuration format')
-        configs = {'running': '', 'candidate': '', 'startup': ''}
-        if retrieve not in ('running', 'all'):
+        if format != "text":
+            raise NotImplementedError(f"{format} is not a supported configuration format")
+        configs = {"running": "", "candidate": "", "startup": ""}
+        if retrieve not in ("running", "all"):
             return configs
-        version = version_parse(next(iter(self.api('/system/package/update/print')))['installed-version'])
+        version = version_parse(next(iter(self.api("/system/package/update/print")))["installed-version"])
         # The API config engine reads the export back from a file; a configuration larger
         # than the API's inline limit (~50 KB) needs /file/read chunking, which requires
         # RouterOS 7.13+. Below that (older 7.x and RouterOS 6) read it over SSH instead,
@@ -533,8 +536,8 @@ class ROSDriver(NetworkDriver):
         else:
             config = self._get_running_config_ssh(version, full=full, sanitized=sanitized)
         # remove date/time in 1st line
-        config = re.sub(r"^# \S+ \S+ by (.+)$", r'# by \1', config, flags=re.MULTILINE)
-        configs['running'] = config
+        config = re.sub(r"^# \S+ \S+ by (.+)$", r"# by \1", config, flags=re.MULTILINE)
+        configs["running"] = config
         return configs
 
     def _get_running_config_ssh(self, version, full=False, sanitized=False):
@@ -562,23 +565,23 @@ class ROSDriver(NetworkDriver):
         finally:
             self.ssh.close()
 
-    def cli(self, commands, encoding='text'):
+    def cli(self, commands, encoding="text"):
         # The binary API has no interactive terminal, so each command is run as a one-line
         # script through /execute and its printed output is returned. Commands are
         # RouterOS script syntax (e.g. "/ip/address/print" on RouterOS 7, "/ip address print"
         # on RouterOS 6, or ":put [/system/identity/get name]"), not interactive shorthand.
         # RouterOS reports a bad command as output text ("syntax error ..."), not as an
         # API trap, so it comes back in the result like an IOS "% Invalid input" would.
-        if encoding != 'text':
-            raise NotImplementedError(f'{encoding} is not a supported encoding')
+        if encoding != "text":
+            raise NotImplementedError(f"{encoding} is not a supported encoding")
         if not isinstance(commands, list):
-            raise TypeError('Please enter a valid list of commands!')
+            raise TypeError("Please enter a valid list of commands!")
         output = {}
         for command in commands:
             try:
                 output[command] = self._execute(command)
             except (TrapError, MultiTrapError) as exc:
-                raise CommandErrorException(f'{command}: {exc}')
+                raise CommandErrorException(f"{command}: {exc}")
         return output
 
     def _execute(self, script):
@@ -588,16 +591,16 @@ class ROSDriver(NetworkDriver):
         # to running the script as a background job that writes its output to a file.
         if self._execute_as_string is not False:
             try:
-                rows = tuple(self.api('/execute', script=script, **{'as-string': True}))
+                rows = tuple(self.api("/execute", script=script, **{"as-string": True}))
             except TrapError as exc:
-                if self._execute_as_string or 'unknown parameter' not in str(exc):
+                if self._execute_as_string or "unknown parameter" not in str(exc):
                     raise
                 self._execute_as_string = False
             else:
                 self._execute_as_string = True
                 # A script that prints nothing comes back as a bare !done with no =ret=.
-                text = str(rows[0]['ret']) if rows and 'ret' in rows[0] else ''
-                return text.replace('\r\n', '\n')
+                text = str(rows[0]["ret"]) if rows and "ret" in rows[0] else ""
+                return text.replace("\r\n", "\n")
         return self._execute_to_file(script)
 
     def _execute_to_file(self, script):
@@ -606,33 +609,31 @@ class ROSDriver(NetworkDriver):
         # file's contents inline when it is small (about 4 KB); larger output would need
         # /file/read (RouterOS 7.13+, where as-string is used instead), so on RouterOS 6
         # it cannot be read over the API at all.
-        name = f'napalm-cli-{uuid.uuid4().hex[:8]}'
-        filename = f'{name}.txt'
+        name = f"napalm-cli-{uuid.uuid4().hex[:8]}"
+        filename = f"{name}.txt"
         deadline = time.monotonic() + self.timeout
-        rows = tuple(self.api('/execute', script=script, file=name))
-        job = rows[0].get('ret') if rows else None
+        rows = tuple(self.api("/execute", script=script, file=name))
+        job = rows[0].get("ret") if rows else None
         try:
-            while job and time.monotonic() < deadline and any(row.get('.id') == job for row in self.api('/system/script/job/print')):
+            while job and time.monotonic() < deadline and any(row.get(".id") == job for row in self.api("/system/script/job/print")):
                 time.sleep(0.1)
             while time.monotonic() < deadline:
-                rows = tuple(self.api.path('file').select(Key('size'), Key('contents')).where(Key('name') == filename))
+                rows = tuple(self.api.path("file").select(Key("size"), Key("contents")).where(Key("name") == filename))
                 if rows:
                     break
                 time.sleep(0.1)
             else:
-                raise CommandErrorException(f'{script}: timed out waiting for /execute output')
-            if 'contents' in rows[0]:
-                return str(rows[0]['contents']).replace('\r\n', '\n').removesuffix('\n')
-            if not int(rows[0].get('size') or 0):
-                return ''
-            raise CommandErrorException(
-                f'{script}: output ({rows[0]["size"]} bytes) exceeds what the API exposes inline (about 4 KB) on this RouterOS version'
-            )
+                raise CommandErrorException(f"{script}: timed out waiting for /execute output")
+            if "contents" in rows[0]:
+                return str(rows[0]["contents"]).replace("\r\n", "\n").removesuffix("\n")
+            if not int(rows[0].get("size") or 0):
+                return ""
+            raise CommandErrorException(f"{script}: output ({rows[0]['size']} bytes) exceeds what the API exposes inline (about 4 KB) on this RouterOS version")
         finally:
             try:
-                ids = [row['.id'] for row in self.api.path('file').select(Key('.id')).where(Key('name') == filename)]
+                ids = [row[".id"] for row in self.api.path("file").select(Key(".id")).where(Key("name") == filename)]
                 if ids:
-                    self.api.path('file').remove(*ids)
+                    self.api.path("file").remove(*ids)
             except (TrapError, MultiTrapError, ConnectionClosed, FatalError, OSError):
                 pass
 
@@ -650,19 +651,19 @@ class ROSDriver(NetworkDriver):
     def _read_candidate(filename, config):
         # A filename takes precedence over an inline config string (NAPALM contract).
         if filename is not None:
-            with open(filename, 'r', encoding='utf-8') as handle:
+            with open(filename, "r", encoding="utf-8") as handle:
                 return handle.read()
-        return config or ''
+        return config or ""
 
     def compare_config(self):
         if self._candidate is None:
-            return ''
+            return ""
         # Fetch the running config the same version-aware way get_config does (API on
         # RouterOS 7.13+, SSH below), then diff it against the candidate. The API config
         # engine cannot chunk-read a large export below 7.13, and unlike get_config it has
         # no SSH fallback, so calling it directly would raise there; routing through
         # get_config makes compare_config work across every supported RouterOS version.
-        running = self.get_config(retrieve='running')['running']
+        running = self.get_config(retrieve="running")["running"]
         return config_compare(running, self._candidate)
 
     def discard_config(self):
@@ -670,22 +671,21 @@ class ROSDriver(NetworkDriver):
         self._config_replace = False
 
     def _ros_version(self):
-        return version_parse(next(iter(self.api('/system/package/update/print')))['installed-version'])
+        return version_parse(next(iter(self.api("/system/package/update/print")))["installed-version"])
 
-    def commit_config(self, message='', revert_in=None):
+    def commit_config(self, message="", revert_in=None):
         if message:
-            raise NotImplementedError('Commit message not implemented for this platform')
+            raise NotImplementedError("Commit message not implemented for this platform")
         if self._candidate is None:
-            raise CommitError('No candidate configuration loaded.')
+            raise CommitError("No candidate configuration loaded.")
         # The NAPALM contract requires raising while a commit-confirm is still pending,
         # rather than re-arming (which would corrupt the rollback baseline) or leaving a
         # stale timer that later reboots the device.
         if self.has_pending_commit():
-            raise CommitError('A commit confirm is already pending. Call confirm_commit or rollback first.')
+            raise CommitError("A commit confirm is already pending. Call confirm_commit or rollback first.")
         if revert_in is not None and self._config_replace:
             raise CommitConfirmException(
-                'Commit confirm (revert_in) is not supported with a replace on RouterOS, '
-                'because reset-configuration removes the scheduled rollback.'
+                "Commit confirm (revert_in) is not supported with a replace on RouterOS, because reset-configuration removes the scheduled rollback."
             )
         cfg = self.api.config()
         error = ReplaceConfigException if self._config_replace else MergeConfigException
@@ -699,7 +699,7 @@ class ROSDriver(NetworkDriver):
             try:
                 cfg.validate(self._candidate)
             except (TrapError, MultiTrapError) as exc:
-                raise error(f'Candidate configuration failed dry-run validation: {exc}')
+                raise error(f"Candidate configuration failed dry-run validation: {exc}")
         try:
             # Snapshot the pre-change state so rollback() can always restore the last
             # commit. It must be persistent: a replace reboots, which would otherwise
@@ -713,13 +713,13 @@ class ROSDriver(NetworkDriver):
             # arm_rollback's scheduler add is refused ("not allowed by device-mode") and
             # commit-confirm is simply unavailable. The candidate is not applied either way;
             # point the operator at the fix rather than leaving a bare trap message.
-            if revert_in is not None and 'device-mode' in str(exc):
+            if revert_in is not None and "device-mode" in str(exc):
                 raise CommitError(
-                    f'Cannot arm commit-confirm: {exc}. The scheduler is disabled in this '
+                    f"Cannot arm commit-confirm: {exc}. The scheduler is disabled in this "
                     "device's device-mode (RouterOS 7.17+); enable it with "
                     "'/system/device-mode/update scheduler=yes' or commit without revert_in."
                 )
-            raise CommitError(f'Failed to prepare rollback: {exc}')
+            raise CommitError(f"Failed to prepare rollback: {exc}")
         try:
             if self._config_replace:
                 cfg.replace(self._candidate)
@@ -755,35 +755,35 @@ class ROSDriver(NetworkDriver):
         elif cfg.backup_exists(ROLLBACK_SNAPSHOT, persistent=True):
             cfg.backup_load(ROLLBACK_SNAPSHOT, persistent=True)
         else:
-            raise CommitError('No rollback snapshot available.')
+            raise CommitError("No rollback snapshot available.")
 
     def get_interfaces(self):
         interfaces = {}
-        for entry in self.api('/interface/print'):
-            interfaces[entry['name']] = {
-                'is_up': entry['running'],
-                'is_enabled': not entry['disabled'],
-                'description': entry.get('comment', ''),
-                'last_flapped': -1.0,
-                'mtu': entry.get('actual-mtu', 0),
-                'speed': -1.0,
-                'mac_address': cast_mac(entry['mac-address']) if entry.get('mac-address') else '',
+        for entry in self.api("/interface/print"):
+            interfaces[entry["name"]] = {
+                "is_up": entry["running"],
+                "is_enabled": not entry["disabled"],
+                "description": entry.get("comment", ""),
+                "last_flapped": -1.0,
+                "mtu": entry.get("actual-mtu", 0),
+                "speed": -1.0,
+                "mac_address": cast_mac(entry["mac-address"]) if entry.get("mac-address") else "",
             }
         return interfaces
 
     def get_interfaces_ip(self):
         interfaces_ip = {}
 
-        ipv4_addresses = tuple(self.api('/ip/address/print'))
-        for ifname in (row['interface'] for row in ipv4_addresses):
+        ipv4_addresses = tuple(self.api("/ip/address/print"))
+        for ifname in (row["interface"] for row in ipv4_addresses):
             interfaces_ip.setdefault(ifname, {})
-            interfaces_ip[ifname]['ipv4'] = utils.iface_addresses(ipv4_addresses, ifname)
+            interfaces_ip[ifname]["ipv4"] = utils.iface_addresses(ipv4_addresses, ifname)
 
         try:
-            ipv6_addresses = tuple(self.api('/ipv6/address/print'))
-            for ifname in (row['interface'] for row in ipv6_addresses):
+            ipv6_addresses = tuple(self.api("/ipv6/address/print"))
+            for ifname in (row["interface"] for row in ipv6_addresses):
                 interfaces_ip.setdefault(ifname, {})
-                interfaces_ip[ifname]['ipv6'] = utils.iface_addresses(ipv6_addresses, ifname)
+                interfaces_ip[ifname]["ipv6"] = utils.iface_addresses(ipv6_addresses, ifname)
         except (TrapError, MultiTrapError):
             pass
 
@@ -791,45 +791,45 @@ class ROSDriver(NetworkDriver):
 
     def get_ntp_servers(self):
         ntp_servers = {}
-        ntp_client_values = next(iter(self.api('/system/ntp/client/print')))
-        fqdn_ntp_servers = filter(None, ntp_client_values.get('server-dns-names', '').split(','))
+        ntp_client_values = next(iter(self.api("/system/ntp/client/print")))
+        fqdn_ntp_servers = filter(None, ntp_client_values.get("server-dns-names", "").split(","))
         for ntp_peer in fqdn_ntp_servers:
             ntp_servers[ntp_peer] = {}
-        primary_ntp = ntp_client_values.get('primary-ntp')
-        secondary_ntp = ntp_client_values.get('secondary-ntp')
-        if primary_ntp and primary_ntp != '0.0.0.0':
+        primary_ntp = ntp_client_values.get("primary-ntp")
+        secondary_ntp = ntp_client_values.get("secondary-ntp")
+        if primary_ntp and primary_ntp != "0.0.0.0":
             ntp_servers[primary_ntp] = {}
-        if secondary_ntp and secondary_ntp != '0.0.0.0':
+        if secondary_ntp and secondary_ntp != "0.0.0.0":
             ntp_servers[secondary_ntp] = {}
         return ntp_servers
 
     def get_snmp_information(self):
         communities = {}
-        for row in self.api('/snmp/community/print'):
-            communities[row['name']] = {
-                'acl': row.get('addresses', ''),
-                'mode': 'ro' if row.get('read-access') else 'rw',
+        for row in self.api("/snmp/community/print"):
+            communities[row["name"]] = {
+                "acl": row.get("addresses", ""),
+                "mode": "ro" if row.get("read-access") else "rw",
             }
 
-        snmp_values = next(iter(self.api('/snmp/print')))
+        snmp_values = next(iter(self.api("/snmp/print")))
 
         return {
-            'chassis_id': snmp_values['engine-id'],
-            'community': communities,
-            'contact': snmp_values['contact'],
-            'location': snmp_values['location'],
+            "chassis_id": snmp_values["engine-id"],
+            "community": communities,
+            "contact": snmp_values["contact"],
+            "location": snmp_values["location"],
         }
 
     def get_users(self):
         users = {}
-        for row in self.api('/user/print'):
-            users[row['name']] = {'level': 15 if row['group'] == 'full' else 0, 'password': '', 'sshkeys': []}
+        for row in self.api("/user/print"):
+            users[row["name"]] = {"level": 15 if row["group"] == "full" else 0, "password": "", "sshkeys": []}
         return users
 
     def open(self):
         self.ssh = paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        method = self.optional_args.get('login_method', 'plain')
+        method = self.optional_args.get("login_method", "plain")
         method = getattr(librouteros.login, method)
         try:
             self.api = connect(
@@ -856,43 +856,43 @@ class ROSDriver(NetworkDriver):
         source_interface=C.PING_SOURCE_INTERFACE,
     ):
         params = {
-            'address': destination,
-            'ttl': ttl,
-            'size': size,
-            'count': count,
+            "address": destination,
+            "ttl": ttl,
+            "size": size,
+            "count": count,
         }
         if source:
-            params['src-address'] = source
+            params["src-address"] = source
         if vrf:
-            params['routing-table'] = vrf
+            params["routing-table"] = vrf
 
-        results = tuple(self.api('/ping', **params))
+        results = tuple(self.api("/ping", **params))
         ping_results = {
-            'probes_sent': max(row['sent'] for row in results),
-            'packet_loss': max(row['packet-loss'] for row in results),
-            'rtt_min': utils.parse_duration(results[-1]['min-rtt']).total_seconds() * 1000,
-            'rtt_max': utils.parse_duration(results[-1]['max-rtt']).total_seconds() * 1000,
-            'rtt_avg': utils.parse_duration(results[-1]['avg-rtt']).total_seconds() * 1000,
-            'rtt_stddev': float(-1),
-            'results': []
+            "probes_sent": max(row["sent"] for row in results),
+            "packet_loss": max(row["packet-loss"] for row in results),
+            "rtt_min": utils.parse_duration(results[-1]["min-rtt"]).total_seconds() * 1000,
+            "rtt_max": utils.parse_duration(results[-1]["max-rtt"]).total_seconds() * 1000,
+            "rtt_avg": utils.parse_duration(results[-1]["avg-rtt"]).total_seconds() * 1000,
+            "rtt_stddev": float(-1),
+            "results": [],
         }
 
         for row in results:
-            ping_results['results'].append(
+            ping_results["results"].append(
                 {
-                    'ip_address': cast_ip(row['host']),
-                    'rtt': utils.parse_duration(row['time']).total_seconds() * 1000,
+                    "ip_address": cast_ip(row["host"]),
+                    "rtt": utils.parse_duration(row["time"]).total_seconds() * 1000,
                 }
             )
 
-        return {'success': ping_results}
+        return {"success": ping_results}
 
     def get_vlans(self):
         result = {}
-        for row in self.api('/interface/bridge/vlan/print'):
-            for vid in row['vlan-ids'].split(','):
-                untagged = filter(None, row['untagged'].split(','))
-                tagged = filter(None, row['tagged'].split(','))
+        for row in self.api("/interface/bridge/vlan/print"):
+            for vid in row["vlan-ids"].split(","):
+                untagged = filter(None, row["untagged"].split(","))
+                tagged = filter(None, row["tagged"].split(","))
                 ifs = set(chain(untagged, tagged))
                 result[vid] = {
                     "name": "",
@@ -915,43 +915,38 @@ def flatten_split(rows, key):
     Iterate over given rows and split each found key by ','
     Returns unique split items.
     """
-    items = (row[key].split(',') for row in rows)
+    items = (row[key].split(",") for row in rows)
     return set(chain.from_iterable(items))
 
 
 def convert_arp_table(table):
     for entry in table:
-        if 'mac-address' not in entry:
+        if "mac-address" not in entry:
             continue
 
         yield {
-            'interface': entry['interface'],
-            'mac': cast_mac(entry['mac-address']),
-            'ip': cast_ip(entry['address']),
-            'age': float(-1),
+            "interface": entry["interface"],
+            "mac": cast_mac(entry["mac-address"]),
+            "ip": cast_ip(entry["address"]),
+            "age": float(-1),
         }
 
 
 def convert_vrf_table(table):
     instances = {}
     for entry in table:
-        ifaces = entry.get('interfaces').split(',')
+        ifaces = entry.get("interfaces").split(",")
         ifaces_dict = {iface: {} for iface in ifaces}
-        instances[entry['routing-mark']] = {
-            'name': entry['routing-mark'],
-            'type': 'L3VRF',
-            'state': {
-                'route_distinguisher': entry.get('route-distinguisher')
-            },
-            'interfaces': {
-                'interface': ifaces_dict
-            },
+        instances[entry["routing-mark"]] = {
+            "name": entry["routing-mark"],
+            "type": "L3VRF",
+            "state": {"route_distinguisher": entry.get("route-distinguisher")},
+            "interfaces": {"interface": ifaces_dict},
         }
     return instances
 
 
 class LLDPInterfaces:
-
     def __init__(self, parent, child):
         self.parent = parent
         self.child = child
@@ -959,10 +954,10 @@ class LLDPInterfaces:
     @staticmethod
     def fromApi(string):
         # interface names are the reversed interface e.g. sfp-sfpplus1,bridge will become bridge/sfp-sfpplus1
-        if ',' in string:
-            child, parent = string.split(',')
+        if "," in string:
+            child, parent = string.split(",")
             return LLDPInterfaces(parent=parent, child=child)
-        return LLDPInterfaces(parent='', child=string)
+        return LLDPInterfaces(parent="", child=string)
 
 
 def bgp_peer_detail(peer, inst, sent_prefixes):

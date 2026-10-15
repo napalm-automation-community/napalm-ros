@@ -1,50 +1,47 @@
 """Test fixtures."""
-from builtins import super
-from unittest.mock import MagicMock
+
 from io import BytesIO
 
 import pytest
-from napalm.base.test import conftest as parent_conftest
-from napalm.base.test.double import BaseTestDouble
-from napalm_ros import ros
-import typing
-from librouteros.protocol import (
-    parse_word,
-    cast_to_api,
-    compose_word,
-)
 from librouteros.api import Path
 from librouteros.config import Config
 from librouteros.exceptions import TrapError
+from librouteros.protocol import (
+    parse_word,
+)
+from napalm.base.test import conftest as parent_conftest
+from napalm.base.test.double import BaseTestDouble
+
+from napalm_ros import ros
 
 
 def eval_query(query, row):
-    stack = list()
+    stack = []
     for elem in query:
-        if elem == '?#|':
+        if elem == "?#|":
             lhs, rhs = stack.pop(), stack.pop()
             stack.append(lhs or rhs)
-        elif elem == '?#&':
+        elif elem == "?#&":
             lhs, rhs = stack.pop(), stack.pop()
             stack.append(lhs and rhs)
-        elif elem.startswith('?>'):
-            elem.replace('>', '=')
+        elif elem.startswith("?>"):
+            elem.replace(">", "=")
             key, value = parse_word(elem[1:])
             stack.append(row[elem] > value)
-        elif elem.startswith('?='):
+        elif elem.startswith("?="):
             key, value = parse_word(elem[1:])
             stack.append(row[key] == value)
-        elif elem == '?#!':
+        elif elem == "?#!":
             stack.append(not stack.pop())
     return stack[0]
 
 
 def parse_cmd(self, cmd: str, *words: str):
-    proplist = list()
-    qwords = list()
+    proplist = []
+    qwords = []
     for word in words:
-        if word.startswith('=.proplist='):
-            proplist = tuple(word.split('=.proplist=')[1].split(','))
+        if word.startswith("=.proplist="):
+            proplist = tuple(word.split("=.proplist=")[1].split(","))
         else:
             qwords.append(word)
     return proplist, qwords
@@ -56,7 +53,7 @@ def eval_cmd(cmd, words, load):
             yield row
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope="class")
 def set_device_parameters(request):
     """Set up the class."""
 
@@ -67,7 +64,7 @@ def set_device_parameters(request):
 
     request.cls.driver = ros.ROSDriver
     request.cls.patched_driver = PatchedROSDevice
-    request.cls.vendor = 'ros'
+    request.cls.vendor = "ros"
     parent_conftest.set_device_parameters(request)
 
 
@@ -81,7 +78,7 @@ class PatchedROSDevice(ros.ROSDriver):
 
     def __init__(self, hostname, username, password, timeout=60, optional_args=None):
         super().__init__(hostname, username, password, timeout, optional_args)
-        self.patched_attrs = ['api', 'ssh']
+        self.patched_attrs = ["api", "ssh"]
 
     def open(self):
         self.api = FakeApi()
@@ -89,15 +86,14 @@ class PatchedROSDevice(ros.ROSDriver):
 
 
 class FakeSSH(BaseTestDouble):
-
     def exec_command(self, command):
         sanitized_command = self.sanitize_text(command)
-        stdout_path = self.find_file(f'ssh_exec_{sanitized_command}_stdout')
-        stderr_path = self.find_file(f'ssh_exec_{sanitized_command}_stderr')
+        stdout_path = self.find_file(f"ssh_exec_{sanitized_command}_stdout")
+        stderr_path = self.find_file(f"ssh_exec_{sanitized_command}_stderr")
         return (
             BytesIO(),  # stdin
-            BytesIO(initial_bytes=self.read_txt_file(stdout_path).encode()),  #stdout
-            BytesIO(initial_bytes=self.read_txt_file(stderr_path).encode()),  #stderr
+            BytesIO(initial_bytes=self.read_txt_file(stdout_path).encode()),  # stdout
+            BytesIO(initial_bytes=self.read_txt_file(stderr_path).encode()),  # stderr
         )
 
     def connect(self, *args, **kwargs):
@@ -108,13 +104,12 @@ class FakeSSH(BaseTestDouble):
 
 
 class FakeApi(BaseTestDouble):
-
     def __call__(self, command, **kwargs):
         yield from self.load(command)
 
     def path(self, *path: str):
         return Path(
-            path='',
+            path="",
             api=self,
         ).join(*path)
 
@@ -122,7 +117,7 @@ class FakeApi(BaseTestDouble):
         return Config(api=self)
 
     def rawCmd(self, cmd, *words):
-        proplist, words = parse_cmd(cmd, *words)
+        _, words = parse_cmd(cmd, *words)
         if not words:
             yield from self.load(cmd)
         else:
@@ -132,10 +127,10 @@ class FakeApi(BaseTestDouble):
         pass
 
     def load(self, command):
-        full_path = self.find_file(self.sanitize_text(command) + '.json')
+        full_path = self.find_file(self.sanitize_text(command) + ".json")
         content = self.read_json_file(full_path)
         # A fixture may model a menu that does not exist on the device (e.g. the old
         # /routing/bgp/peer menu on RouterOS 7) by returning a trap instead of data.
-        if 'trap' in content:
-            raise TrapError(content['trap'])
-        yield from content['data']
+        if "trap" in content:
+            raise TrapError(content["trap"])
+        yield from content["data"]

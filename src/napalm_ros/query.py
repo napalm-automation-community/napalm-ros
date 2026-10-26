@@ -28,7 +28,7 @@ class Keys:
     interface_name = Key("interface-name")
     keepalive_time = Key("keepalive-time")
     local_address = Key("local-address")
-    mac_address = Key("max-address")
+    mac_address = Key("mac-address")
     multihop = Key("multihop")
     name = Key("name")
     nexthop = Key("nexthop")

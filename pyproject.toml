@@ -1,6 +1,6 @@
 [project]
 name = "napalm-ros"
-version = "1.6.0"
+version = "1.6.1"
 description = "Network Automation and Programmability Abstraction Layer driver for Mikrotik ROS"
 readme = "README.md"
 authors = [

@@ -10,7 +10,7 @@ class Keys:
     address_families = Key("address-families")
     as4_capability = Key("as4-capability")
     as_num = Key("as")
-    as_override = Key("as_override")
+    as_override = Key("as-override")
     bgp = Key("bgp")
     client_to_client_reflection = Key("client-to-client-reflection")
     default = Key("default")

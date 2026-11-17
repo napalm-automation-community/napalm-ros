@@ -36,7 +36,7 @@ def eval_query(query, row):
     return stack[0]
 
 
-def parse_cmd(self, cmd: str, *words: str):
+def parse_cmd(cmd: str, *words: str):
     proplist = []
     qwords = []
     for word in words:
@@ -117,11 +117,11 @@ class FakeApi(BaseTestDouble):
         return Config(api=self)
 
     def rawCmd(self, cmd, *words):
-        _, words = parse_cmd(cmd, *words)
-        if not words:
-            yield from self.load(cmd)
-        else:
-            yield from eval_cmd(cmd=cmd, words=words, load=self.load)
+        proplist, words = parse_cmd(cmd, *words)
+        rows = eval_cmd(cmd=cmd, words=words, load=self.load) if words else self.load(cmd)
+        for row in rows:
+            # Like RouterOS, return only the attributes named in .proplist.
+            yield {k: v for k, v in row.items() if k in proplist} if proplist else row
 
     def close(self):
         pass
